@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-version=${RADCHAT_VERSION:-v0.2.0}
+version=${RADCHAT_VERSION:-v0.2.1}
 case "$version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) printf 'Invalid release version\n' >&2; exit 1;; esac
 case "$(uname -s)" in Darwin) platform=darwin;; Linux) platform=linux;; *) printf 'Use the Windows release zip.\n' >&2; exit 1;; esac
 case "$(uname -m)" in arm64|aarch64) arch=arm64;; x86_64|amd64) arch=amd64;; *) printf 'Unsupported architecture\n' >&2; exit 1;; esac

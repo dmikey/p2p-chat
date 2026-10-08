@@ -104,7 +104,7 @@ func (n *Node) StartRunner(c RunnerConfig) error {
 	r.channel = c.Channel
 	r.state = RunnerState{Phase: "listening", Provider: c.Provider, Model: c.Model, Channel: c.Channel, Limit: c.Limit, Updated: time.Now().UnixMilli()}
 	r.mu.Unlock()
-	go n.runModelLoop(ctx, gen, c, modelCompletion)
+	n.background(func() { n.runModelLoop(ctx, gen, c, modelCompletion) })
 	return nil
 }
 

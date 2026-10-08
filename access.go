@@ -549,7 +549,7 @@ func (n *Node) switchTopic() error {
 	n.topic = topic
 	n.sub = sub
 	n.mu.Unlock()
-	go func() {
+	n.background(func() {
 		for {
 			msg, err := sub.Next(n.ctx)
 			if err != nil {
@@ -557,7 +557,7 @@ func (n *Node) switchTopic() error {
 			}
 			n.accept(msg.Data, true)
 		}
-	}()
+	})
 	return nil
 }
 

@@ -50,6 +50,11 @@ type ChatMessage struct {
 	Kind    string `json:"kind"`
 }
 type Node struct {
+	lifecycle        sync.Mutex
+	closed           bool
+	workers          sync.WaitGroup
+	closeOnce        sync.Once
+	closeErr         error
 	contributorMu    sync.Mutex
 	contributed      *Node
 	runner           Runner
@@ -158,9 +163,9 @@ func NewNode(ctx context.Context, cfg Config) (*Node, error) {
 		return nil, err
 	}
 	n.ps = ps
-	h.SetStreamHandler(joinProtocol, n.handleJoin)
-	h.SetStreamHandler(historyProtocol, n.handleHistory)
-	h.SetStreamHandler(directProtocol, n.handleDirect)
+	h.SetStreamHandler(joinProtocol, n.streamHandler(n.handleJoin))
+	h.SetStreamHandler(historyProtocol, n.streamHandler(n.handleHistory))
+	h.SetStreamHandler(directProtocol, n.streamHandler(n.handleDirect))
 	if err = saveVault(cfg.Dir, v, key); err != nil {
 		n.Close()
 		return nil, err
@@ -171,19 +176,50 @@ func NewNode(ctx context.Context, cfg Config) (*Node, error) {
 			return nil, err
 		}
 	}
-	go n.networkLoop()
+	n.background(n.networkLoop)
 	return n, nil
 }
-func (n *Node) Close() error {
-	n.runner.stop("stopped")
-	n.contributorMu.Lock()
-	if n.contributed != nil {
-		n.contributed.Close()
+func (n *Node) background(fn func()) {
+	n.lifecycle.Lock()
+	if n.closed {
+		n.lifecycle.Unlock()
+		return
 	}
-	n.contributorMu.Unlock()
-	n.cancel()
-	n.stopTopic()
-	return n.Host.Close()
+	n.workers.Add(1)
+	n.lifecycle.Unlock()
+	go func() { defer n.workers.Done(); fn() }()
+}
+func (n *Node) streamHandler(fn func(network.Stream)) func(network.Stream) {
+	return func(s network.Stream) {
+		n.lifecycle.Lock()
+		if n.closed {
+			n.lifecycle.Unlock()
+			s.Reset()
+			return
+		}
+		n.workers.Add(1)
+		n.lifecycle.Unlock()
+		defer n.workers.Done()
+		fn(s)
+	}
+}
+func (n *Node) Close() error {
+	n.closeOnce.Do(func() {
+		n.lifecycle.Lock()
+		n.closed = true
+		n.lifecycle.Unlock()
+		n.cancel()
+		n.runner.stop("stopped")
+		n.contributorMu.Lock()
+		if n.contributed != nil {
+			n.contributed.Close()
+		}
+		n.contributorMu.Unlock()
+		n.stopTopic()
+		n.closeErr = n.Host.Close()
+		n.workers.Wait()
+	})
+	return n.closeErr
 }
 func (n *Node) snapshotOrg() *Org {
 	n.mu.Lock()
@@ -509,7 +545,7 @@ func (n *Node) startOrg() error {
 	if err = n.loadDirect(); err != nil {
 		return err
 	}
-	go func() {
+	n.background(func() {
 		for {
 			msg, err := sub.Next(n.ctx)
 			if err != nil {
@@ -517,7 +553,7 @@ func (n *Node) startOrg() error {
 			}
 			n.accept(msg.Data, true)
 		}
-	}()
+	})
 	return nil
 }
 func validChannel(s string) bool {
