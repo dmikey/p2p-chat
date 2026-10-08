@@ -69,6 +69,7 @@ func (n *Node) Handler() http.Handler {
 	})
 	api := http.NewServeMux()
 	api.Handle("/api/economy", SolanaHandler())
+	api.HandleFunc("/api/services", n.serviceHandler)
 	api.HandleFunc("/api/runner", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			respond(w, 405, map[string]string{"error": "POST required"})

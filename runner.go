@@ -77,8 +77,8 @@ func (n *Node) StartRunner(c RunnerConfig) error {
 	if !c.Consent {
 		return errors.New("approve sending this prompt to your selected model provider")
 	}
-	if c.Provider != "openai" && c.Provider != "anthropic" {
-		return errors.New("choose OpenAI or Anthropic")
+	if c.Provider != "openai" && c.Provider != "anthropic" && c.Provider != "harness" {
+		return errors.New("choose OpenAI, Anthropic or the local agent runtime")
 	}
 	if strings.TrimSpace(c.APIKey) == "" || len(c.APIKey) > 512 || strings.ContainsAny(c.APIKey, "\r\n") || strings.TrimSpace(c.Model) == "" || len(c.Model) > 100 || len(c.Prompt) < 1 || len(c.Prompt) > 4000 || c.Interval < 30 || c.Interval > 86400 || c.Limit < 1 || c.Limit > 100 {
 		return errors.New("invalid configuration: interval 30–86400 seconds, 1–100 calls, and a prompt are required")
@@ -197,6 +197,10 @@ func (n *Node) ApproveRunner(ctx context.Context) error {
 func modelCompletion(ctx context.Context, c RunnerConfig) (string, error) {
 	endpoint := "https://api.openai.com/v1/chat/completions"
 	payload := map[string]any{"model": c.Model, "max_completion_tokens": 512, "messages": []map[string]string{{"role": "user", "content": c.Prompt}}}
+	if c.Provider == "harness" {
+		endpoint = "http://127.0.0.1:8811/complete"
+		payload = map[string]any{"prompt": c.Prompt, "skill": "plan"}
+	}
 	if c.Provider == "anthropic" {
 		endpoint = "https://api.anthropic.com/v1/messages"
 		delete(payload, "max_completion_tokens")

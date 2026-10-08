@@ -87,6 +87,11 @@ func TestDeactivatedAccountReactivationAndRelayPersistence(t *testing.T) {
 	}
 	owner.Host.Connect(context.Background(), *owner.bootstrap)
 	current, err := owner.accessExchange(context.Background(), nil)
+	for attempt := 0; err != nil && attempt < 20; attempt++ {
+		time.Sleep(50 * time.Millisecond)
+		owner.Host.Connect(context.Background(), *owner.bootstrap)
+		current, err = owner.accessExchange(context.Background(), nil)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,5 +140,39 @@ func TestDeactivatedAccountReactivationAndRelayPersistence(t *testing.T) {
 	}
 	if cert.Name != "Member" {
 		t.Fatal("account identity was deleted instead of deactivated")
+	}
+}
+
+// An accepted update may lose its reply. Rebuilding at the same version with a
+// fresh encryption nonce conflicts, so the owner must read the current version.
+func TestOwnerRecoversAccessAfterLostResponse(t *testing.T) {
+	_, auth := authorityTest(t)
+	relay, err := NewBootstrap(t.TempDir(), "/ip4/127.0.0.1/tcp/0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer relay.Close()
+	owner := testNode(t, auth.URL, "human", addresses(relay.Host)[0])
+	verifyTestEmail(t, owner, "lost-response@example.com", "Owner")
+	if err = owner.CreateOrg("Lost response"); err != nil {
+		t.Fatal(err)
+	}
+	owner.accessUpdate.Lock()
+	record, err := owner.buildAccess()
+	if err == nil {
+		_, err = owner.accessExchange(context.Background(), &record)
+	}
+	owner.accessUpdate.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Deliberately do not apply the reply: local access is behind the relay.
+	if err = owner.publishAccess(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	got, err := verifyAccess(owner.snapshotOrg().Access)
+	previous, _ := verifyAccess(record)
+	if err != nil || got.Version <= previous.Version {
+		t.Fatalf("version not recovered: %v", err)
 	}
 }

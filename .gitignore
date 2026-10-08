@@ -7,3 +7,8 @@ desktop/build/bin/
 web/wailsjs/
 
 browser/node_modules/
+
+__pycache__/
+*.pyc
+harness/.venv/
+.env.*

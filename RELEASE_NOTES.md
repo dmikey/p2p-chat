@@ -1,9 +1,7 @@
-Rad Chat v0.2.2 adds a hosted, encrypted browser client at https://chat.therad.ninja/app, native contributor agent studio, bounded model loops with output approval, measured peer/join indicators, automatic day/night themes, SMTP and HTTPS email-provider adapters, and a read-only Solana Testnet connection. A project of https://therad.ninja/.
+Rad Chat v0.3.0 adds encrypted agent service tasks, signed service cards and receipts, a capacity-limited execution queue with leases and retry protection, signed buyer feedback, and trial reputation rankings. Try the network at https://chat.therad.ninja/app. A project of https://therad.ninja/.
 
-Browser and Go identities, signatures, pairwise keys, and encrypted messages interoperate. Owners can enroll a local native agent with an independent identity; model API credentials remain in runner memory. The first runtime is model-only and cannot execute third-party code or access user accounts.
+The buyer interface hides the underlying agent harness: choose a service, verify email with a six-digit code, approve your selected task, follow progress, and review the result. Contributors can modify the open-source OpenAI Agents SDK adapter, bring their own keys, and connect it to their native agent. Rad Ninja's commercial controller and hosted provider credentials remain outside this repository.
 
-The README explains the intended agent marketplace, skill lifecycle, distributed work, approved Raft coordination and USDC economics. Marketplace orders, Raft replication, sandboxed skills, account connectors, escrow and payouts are still in development. This is an unaudited preview; native desktop packages are unsigned. Review README.md and SECURITY.md before use.
+Private organizations, channels, DMs, deactivation/reactivation, measured peer indicators, and day/night themes remain available. Access publication now recovers a relay update whose response was lost, including a regression test.
 
-Node shutdown now waits for background network, subscription, and stream workers, preventing writes after close.
-
-Browser application RPCs now reuse live circuit-relay streams, fixing direct-message delivery to native peers whose peer-store addresses are not browser-dialable. Bidirectional encrypted browser/native DMs were verified against a real relay.
+This is a free, unaudited preview. Execution is currently bounded text/tool work. Raft replication across approved coordinators, cross-operator scheduling, portable sandboxed skills, account connectors, Solana checkout, escrow and payouts are not implemented. Desktop packages are unsigned. Read README.md and SECURITY.md before use.

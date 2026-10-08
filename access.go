@@ -273,11 +273,66 @@ func (n *Node) publishAccess(ctx context.Context) error {
 	}
 	n.accessUpdate.Lock()
 	defer n.accessUpdate.Unlock()
-	record, err := n.buildAccess()
-	if err != nil {
+	if err := n.Host.Connect(ctx, *n.bootstrap); err != nil {
 		return err
 	}
-	if err = n.Host.Connect(ctx, *n.bootstrap); err != nil {
+	// Recover an update the relay accepted before its response reached this owner.
+	// Keep newer local changes, but use the relay's signed version for the next write.
+	o := n.snapshotOrg()
+	latest, readErr := n.accessExchange(ctx, nil)
+	if readErr == nil {
+		r, err := verifyAccess(latest)
+		if err != nil || r.Org != o.ID || !bytes.Equal(r.Root, o.Root) {
+			return errors.New("invalid current access record")
+		}
+		var owner Certificate
+		json.Unmarshal(r.Owner.Payload, &owner)
+		if owner.Peer != n.Host.ID().String() {
+			return errors.New("access owner mismatch")
+		}
+		old, _ := verifyAccess(o.Access)
+		if old.Version > r.Version {
+			return errors.New("relay attempted an access rollback")
+		}
+		policy, _ := verifyPolicy(o, o.Policy)
+		newer := r.Epoch > policy.Epoch
+		if r.Epoch == policy.Epoch {
+			if !bytes.Equal(r.KeyHash, keyHash(o.Secret)) {
+				return errors.New("epoch key conflict")
+			}
+			plain, e := open(o.Secret, r.Control, "radchat-control:"+o.ID)
+			if e != nil {
+				return e
+			}
+			var control orgControl
+			if json.Unmarshal(plain, &control) != nil {
+				return errors.New("invalid access control")
+			}
+			remote, e := verifyPolicy(o, control.Policy)
+			if e != nil {
+				return e
+			}
+			newer = remote.Revision > policy.Revision
+		}
+		if newer {
+			if err = n.applyAccess(latest); err != nil {
+				return err
+			}
+		} else {
+			n.mu.Lock()
+			n.vault.Org.Access = latest
+			n.mu.Unlock()
+		}
+	} else {
+		// A zero Signed value becomes payload:null after a vault JSON round trip.
+		// Only a verified record proves this organization was already registered.
+		_, existingErr := verifyAccess(o.Access)
+		if existingErr == nil || readErr.Error() != "organization not registered on this relay" {
+			return readErr
+		}
+	}
+	record, err := n.buildAccess()
+	if err != nil {
 		return err
 	}
 	confirmed, err := n.accessExchange(ctx, &record)

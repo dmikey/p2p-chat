@@ -53,11 +53,13 @@ export class BrowserNode {
  async rpc(target,protocol,payload){
   const stream=await openRPCStream(this.node,target,protocol,timeout());
   stream.inactivityTimeout=10000;
-  try{await write(stream,payload);const result=await read(stream);if(result.error)fail(result.error);return result}finally{await stream.close().catch(()=>{})}
+  try{await write(stream,payload);const result=await read(stream);if(result.error)fail(typeof result.error==='string'?result.error:result.error.message);return result}finally{await stream.close().catch(()=>{})}
  }
  async exchange(update){return (await this.rpc(this.bootstrap,protocols.access,{org:this.v.org.id,...(update?{update}:{})})).record}
  async publishAccess(){
-  const o=this.v.org,p=C.checkPolicy(o,o.policy),active={},grants={};
+  const o=this.v.org;
+  try{const latest=await this.exchange(),r=C.checkAccess(o,latest),local=C.checkPolicy(o,o.policy);if(r.owner.payload.peer!==this.peer)fail('Access owner mismatch');if(o.access&&r.version<o.access.payload.version)fail('Access rollback');let newer=r.epoch>local.epoch;if(r.epoch===local.epoch){if(r.keyHash!==local.keyHash)fail('Epoch key conflict');const control=JSON.parse(C.text(await C.open(C.unb64(o.secret),C.unb64(r.control),'radchat-control:'+o.id)));newer=C.checkPolicy(o,control.policy).revision>local.revision}if(newer)await this.applyAccess(latest);else o.access=latest}catch(e){if(o.access||e.message!=='organization not registered on this relay')throw e}
+  const p=C.checkPolicy(o,o.policy),active={},grants={};
   for(const s of o.members){const c=C.checkMember(o,s,s.payload.peer);active[c.peer]=!p.deactivated[c.peer];if(active[c.peer])grants[c.peer]=C.b64(await C.seal(C.pairKey(this.id.raw,C.unb64(c.encryptionKey),o.id,this.peer,c.peer),C.unb64(o.secret),'radchat-keygrant:'+o.id+':'+p.epoch))}
   const sort=object=>Object.fromEntries(Object.entries(object).sort(([a],[b])=>a.localeCompare(b,'en',{sensitivity:'variant'})));
   // Go encoding/json sorts map keys by raw UTF-8 bytes.
@@ -65,6 +67,7 @@ export class BrowserNode {
   const record=C.sign({org:o.id,root:o.root,version:(o.access?.payload.version||0)+1,epoch:p.epoch,keyHash:p.keyHash,owner:o.member,active:sorted(active),grants:sorted(grants),control:C.b64(await C.seal(C.unb64(o.secret),C.bytes(C.json({policy:o.policy,members:o.members})),'radchat-control:'+o.id))},C.unb64(o.rootSeed));
   await this.applyAccess(await this.exchange(record));
  }
+ async ownerNeedsPublication(){const o=this.v.org;if(!o.access||o.access.payload.epoch!==o.policy.payload.epoch||o.access.payload.keyHash!==o.policy.payload.keyHash)return true;try{const control=JSON.parse(C.text(await C.open(C.unb64(o.secret),C.unb64(o.access.payload.control),'radchat-control:'+o.id)));return C.json(control.policy)!==C.json(o.policy)||C.json(control.members)!==C.json(o.members)}catch{return true}}
  async refreshAccess(){await this.applyAccess(await this.exchange())}
  async applyAccess(s){
   const o=this.v.org,r=C.checkAccess(o,s),old=o.access?.payload;
@@ -114,7 +117,7 @@ export class BrowserNode {
  async step(){
   await this.node.dial(multiaddr(this.bootstrap),timeout());
   if(!this.v.org)return;
-  await this.refreshAccess();if(!this.active())return;
+  if(this.v.org.rootSeed&&await this.ownerNeedsPublication())await this.publishAccess();else await this.refreshAccess();if(!this.active())return;
   const addrs=this.node.getMultiaddrs().map(a=>a.toString());addrs.push(this.bootstrap+'/p2p-circuit/p2p/'+this.peer);
   const found=await this.rpc(this.bootstrap,protocols.discovery,{tag:this.topic,addresses:[...new Set(addrs)].slice(0,12)});
   const roster=new Set(this.v.org.members.map(s=>s.payload.peer));
@@ -158,10 +161,27 @@ export class BrowserNode {
   return {id:m.id,channel:'dm:'+other.peer,text:m.text,...(m.replyTo?{replyTo:m.replyTo}:{}),created:m.created,peer:from.peer,name:from.name,kind:from.kind};
  }
  async acceptDirect(p,persist){const m=await this.decodeDirect(p);if(this.direct.some(x=>x.id===m.id))return;this.direct.push(m);if(persist){this.v.directPackets.push(p);await this.save()}}
+ async services(){
+  const response=await this.http('/api/services');if(!Array.isArray(response.services)||response.services.length>100)fail('Invalid service catalog');
+  for(const signed of response.services){const c=C.verify(signed,C.peerPublic(signed.payload.peer));if(c.expires<Date.now()/1000||c.expires>Date.now()/1000+120||c.protocol!=='/radchat/service/1.0.0'||!c.id||!Array.isArray(c.addresses)||c.addresses.length>16)fail('Expired or invalid service card')}
+  return response;
+ }
+ async serviceCall(p){
+  this.requireVerified();const catalog=await this.services(),signed=catalog.services.find(s=>s.payload.id===p.service);if(!signed)fail('Service unavailable');const card=signed.payload;
+  const req={jsonrpc:'2.0',id:C.token(),method:p.action,proof:this.v.proof,params:{service:p.service,id:p.taskId||'',message:{messageId:p.messageId||'',role:'user',parts:[{kind:'text',text:p.prompt||''}]},consent:Boolean(p.consent),accepted:Boolean(p.accepted)}};
+  if(p.action==='tasks/feedback')req.feedback=C.sign({taskId:p.taskId,worker:card.peer,accepted:Boolean(p.accepted)},C.unb64(this.v.seed));
+  let res,lastError;
+  for(const addr of card.addresses){if(!addr.endsWith('/p2p/'+card.peer)||!addr.includes('/wss')&&!(location.hostname==='127.0.0.1'&&addr.includes('/ws')))continue;try{res=await this.rpc(addr,card.protocol,req);break}catch(e){lastError=e}}
+  if(!res)fail(lastError?.message||'This agent is not reachable yet');if(res.error)fail(res.error.message||'Task unavailable');const receipt=res.result.metadata['radchat/receipt'],view=C.verify(receipt,C.peerPublic(card.peer));
+  if(view.buyer!==this.peer||view.worker!==card.peer||view.service!==p.service||(p.taskId&&view.id!==p.taskId))fail('Task receipt mismatch');
+  this.v.tasks=this.v.tasks||[];this.v.tasks=this.v.tasks.filter(s=>s.payload.id!==view.id&&s.payload.created>Date.now()-86400000);this.v.tasks.push(receipt);await this.save();return receipt;
+ }
  async call(path,body){
   const p=body?JSON.parse(body):undefined,o=this.v.org;
   if(path==='/api/state')return {runtime:'browser',peer:this.peer,name:this.v.name,email:this.v.email,kind:'human',addresses:this.node.getMultiaddrs().map(a=>a.toString()),peers:this.node.getConnections().map(c=>({id:c.remotePeer.toString(),bootstrap:c.remotePeer.toString()===this.bootPeer,relayed:c.remoteAddr.toString().includes('/p2p-circuit')})),networkError:this.error,authorized:this.active(),deactivated:Boolean(o?.access&&!o.access.payload.active[this.peer]),org:o?{id:o.id,name:o.name,owner:Boolean(o.rootSeed),policy:{...o.policy.payload,deactivated:{...o.policy.payload.deactivated,...(o.access&&!o.access.payload.active[this.peer]?{[this.peer]:Date.now()}:{})}},members:o.members.map(s=>s.payload)}:null};
   if(path==='/api/economy')return this.http(path);
+  if(path==='/api/services')return p?this.serviceCall(p):this.services();
+  if(path==='/api/tasks')return {tasks:(this.v.tasks||[]).filter(s=>s.payload.created>Date.now()-86400000)};
   if(path==='/api/auth/request')return this.http(path,{email:p.email,peer:this.peer});
   if(path==='/api/auth/verify'){const proof=await this.http(path,{email:p.email,code:p.code,peer:this.peer});const check=C.verify(proof,C.unb64(this.v.authority));if(check.peer!==this.peer||check.emailHash!==C.emailHash(p.email)||check.expires<Date.now()/1000)fail('Email proof mismatch');if(this.v.email&&this.v.email!==p.email.trim().toLowerCase())fail('This browser belongs to another email');this.v.proof=proof;this.v.email=p.email.trim().toLowerCase();this.v.name=p.name.trim();if(!this.v.name||C.bytes(this.v.name).length>80)fail('Invalid name');await this.save();return {ok:true}}
   if(path==='/api/org/create'){
