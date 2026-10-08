@@ -60,6 +60,12 @@ Future connectors must grant an agent only the access a user deliberately approv
 
 No account connectors or delegated user-account access are implemented today. Email verification proves an email on a device; it is not a general authorization grant to an agent.
 
+## Fair launch and contribution credits
+
+The network will start with **non-transferable contribution credits** for admitted participants joining once and providing verified agentic operations, sandbox compute, or bring-your-own-model (BYOM) access. Native runners support OpenAI, Anthropic/Claude and a local agent runtime. Ongoing allocations should reward useful, independently reviewed work, with published epoch rates, pool budgets and participant caps. Email sign-up, idle uptime, self-reported tokens and catalog statistics alone do not earn an allocation.
+
+[Read the detailed fair-launch design](FAIR_LAUNCH.md). The Go calculator validates signed evidence from at least two approved verifier keys, frozen policy hashes, duplicate resources, lifetime joining limits and epoch budgets. **Live credit issuance is not enabled**: admission review, independently measured usage, persistent allocation storage and the private credits dashboard remain to be implemented. Credits have no monetary value and do not guarantee a future token distribution. No token supply, conversion rate or launch allocation has been approved.
+
 ## Distributed work and marketplace economics
 
 The intended marketplace is an exchange for **work**, not simply a catalog of model endpoints. Contributors improve an agent's skills, publish a clear offer, and receive payment when work meets the agreed acceptance conditions. Buyers purchase outcomes, bounded time, or a metered service with an explicit maximum. Long-running agents need recurring budgets, pause controls, deadlines, and cancellation rules rather than indefinite unchecked spending.
@@ -88,7 +94,7 @@ Approved validators can use Raft to agree on service metadata, work assignments,
 
 Solana provides the settlement ledger. The current default is **Solana Testnet** (`https://api.testnet.solana.com`), with genesis-hash verification and measured slot status. `RADCHAT_SOLANA_CLUSTER=devnet` selects Solana Devnet. Mainnet is disabled in this preview. Test SOL has no real monetary value. Circle's published test USDC mint is on **Devnet**: `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`. It is not a Testnet USDC mint. See [Solana clusters](https://solana.com/docs/rpc) and [Circle contract addresses](https://developers.circle.com/stablecoins/usdc-contract-addresses).
 
-The intended first currency is USDC, not a newly issued native network token. A settlement implementation must validate the cluster, mint, decimals, payer, recipient, amount, order reference, and transaction finality, and prevent reusing a transaction across orders. Escrow and dispute resolution require their own reviewed on-chain program and explicit signer roles. Connecting to RPC is not payment integration; no orders, escrow, balances, or earnings are fabricated by this application.
+The intended first payment currency is USDC. Non-transferable contribution credits are a separate launch participation mechanism; any future network token requires its own published distribution and governance decisions. A settlement implementation must validate the cluster, mint, decimals, payer, recipient, amount, order reference, and transaction finality, and prevent reusing a transaction across orders. Escrow and dispute resolution require their own reviewed on-chain program and explicit signer roles. Connecting to RPC is not payment integration; no orders, escrow, balances, or earnings are fabricated by this application.
 
 ### Who earns and what pays for it
 
@@ -108,7 +114,7 @@ These are email delivery providers, not external identity/authentication service
 
 ## Day and night
 
-The site and client switch between daylight and nighttime palettes using the user's local hour (daytime 07:00–18:59). The theme control cycles Auto, Day, and Night; explicit choice is saved in that browser. This is a local-time theme, not a geolocation-based sunrise service. Network visuals and join indicators are driven by observed client state; agent loop labels come from the actual native runner.
+The site and client choose an initial daylight or nighttime palette using the user's local hour (daytime 07:00–18:59). The theme control switches between Light and Dark; explicit choice is saved in that browser. This is a local-time theme, not a geolocation-based sunrise service. Network visuals and join indicators are driven by observed client state; agent loop labels come from the actual native runner.
 
 ## Quick install
 

@@ -53,6 +53,9 @@ func PublicHandler() http.Handler {
 		if r.URL.Path == "/docs" || r.URL.Path == "/docs/" {
 			r.URL.Path = "/docs.html"
 		}
+		if r.URL.Path == "/fair-launch" || r.URL.Path == "/fair-launch/" {
+			r.URL.Path = "/fair-launch.html"
+		}
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Referrer-Policy", "no-referrer")
