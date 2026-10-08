@@ -5,3 +5,70 @@
 :root[data-theme="day"]{background:#f8f5e9;color:#25273f;--paper:#25273f;--line:#d4d8c3;--pink:#c04687;--violet:#6b59a5}:root[data-theme="day"] .site-nav,:root[data-theme="day"] footer{color:#25273f}:root[data-theme="day"] .hero-copy .touch{color:#c04687}:root[data-theme="day"] .hero-copy .this{color:#64713b}:root[data-theme="day"] .hero-footnote,:root[data-theme="day"] .subtitle p,:root[data-theme="day"] .groove-heading>p{color:#68705d}:root[data-theme="day"] .feature,:root[data-theme="day"] .ownership-cards article,:root[data-theme="day"] .download-card,:root[data-theme="day"] .terminal{background:#eeefdf;color:#30363b;border-color:#d3d8bf}:root[data-theme="day"] .planet-center{background:#eef1db;color:#293936;border-color:#788b45;box-shadow:0 0 90px #a7c35b25}:root[data-theme="day"] .planet-center>span{color:#788b45}:root[data-theme="day"] .orbit-peer{background:#fffdf3;border-color:#ced6bb;color:#394733}:root[data-theme="day"] .network-callout{color:#52653d}:root[data-theme="day"] .network-orbit{border-color:#a5b77880;background:radial-gradient(ellipse,#b9cf7b26,transparent 65%)}:root[data-theme="day"] .constellation path{stroke:#7d995d}:root[data-theme="day"] .button.outline{border-color:#6c795f;color:#344831}:root[data-theme="day"] .art-caption{color:#7b806f}
 @media(max-width:700px){.network-hero{height:470px;margin-top:30px}.network-orbit{width:340px;height:340px;top:50px}.orbit-inner{width:220px;height:220px;top:110px}.planet-center{top:160px;width:140px;height:140px}.orbit-peer{padding:10px 12px}.orbit-peer b{font-size:9px}.orbit-peer span{font-size:18px}.orbit-human{top:90px}.orbit-agent{top:30px;right:0}.orbit-work{top:310px}.orbit-solana{top:300px}.orbit-contribute{top:365px;left:40%}.network-callout{font-size:7px;bottom:30px}.site-nav nav{gap:12px}.site-nav nav .github{display:none}}
 :root[data-theme="day"] .edition,:root[data-theme="day"] .edition-no,:root[data-theme="day"] .network-callout{color:#5a6650}:root[data-theme="day"] .edition .live-dot,:root[data-theme="day"] .network-callout .live-dot{background:#778e3d}:root[data-theme="day"] .brand-mark{color:#718632}
+
+/* Keep reading colors separate from decorative accents in both themes. */
+:root{--reading-muted:#c7bdce;--reading-accent:#d5ff4a;--reading-line:#55485f}
+:root[data-theme="day"]{--reading-muted:#50584a;--reading-accent:#49612b;--reading-line:#b9c1aa}
+.brand small,.edition,.hero-footnote,.art-caption,.section-top,.feature-number,
+.feature-tag,.download-notes,.download-card small,.terminal>div,.terminal p,
+footer>p,footer>div,footer>div span{color:var(--reading-muted)}
+.top-tape{font-size:11px;line-height:1.6;letter-spacing:1px;white-space:normal;text-wrap:balance}
+.brand small{font-size:10px;letter-spacing:1px}
+.site-nav nav{font-size:13px}
+.edition{font-size:11px;line-height:1.7;letter-spacing:1px;flex-wrap:wrap}
+.edition-no{font-size:10px;line-height:1.5;margin-right:0}
+.subtitle p{font-size:17px;line-height:1.7;color:var(--reading-muted)}
+.button,.hero-buttons .button{font-size:12px;line-height:1.5}
+.hero-footnote{font-size:11px;line-height:1.8;letter-spacing:.4px;flex-wrap:wrap}
+.hero-copy .this{color:var(--paper);-webkit-text-stroke:0}
+:root[data-theme="day"] .hero-copy .this{color:#49612b}
+.planet-center small{font-size:11px;letter-spacing:1px}
+.orbit-peer b{font-size:12px}
+.network-callout{font-size:11px;line-height:1.8;letter-spacing:.4px;padding:0 12px}
+.art-caption{font-size:10px;line-height:1.7;letter-spacing:.3px;max-width:100%;text-align:right}
+.section-top{font-size:11px;line-height:1.8;gap:20px}
+.eyebrow{font-size:12px;line-height:1.7;letter-spacing:1px;color:var(--reading-accent)}
+.groove-heading>p,.feature p{font-size:15px;line-height:1.8;color:var(--reading-muted)}
+.groove-heading>p{width:340px}
+.feature p{max-width:none}
+.feature-number,.feature-tag{font-size:11px;line-height:1.7;letter-spacing:.3px}
+.feature-tag{border-color:var(--reading-line)}
+.yellow-text,.download h2>span,.download-card b,.terminal code{color:var(--reading-accent)}
+.ownership{background:#f6f3ec;color:#25273f}
+.ownership-label{font-size:12px;line-height:1.7;color:#595164}
+.ownership h2 span{color:#705080}
+.ownership-heading>p,.ownership-cards p{font-size:15px;line-height:1.8;color:#595164}
+.ownership-cards article{border-color:#b9afc2}
+.ownership-cards article>span{color:#705080}
+.ownership-cards a{font-size:12px;line-height:1.7;color:#624275;letter-spacing:.4px}
+.honesty{font-size:13px;line-height:1.8;color:#595164;border-color:#b9afc2}
+.honesty a{color:#624275}
+:root[data-theme="day"] .ownership{background:#edf0df;color:#25273f}
+:root[data-theme="day"] .ownership-cards article{background:transparent;color:inherit;border-color:#b9c1aa}
+.download-card small{font-size:13px;line-height:1.7}
+.download-card b,.download-notes{font-size:11px;line-height:1.8;letter-spacing:.4px}
+.download-notes a{color:var(--reading-muted);text-decoration:underline;text-underline-offset:4px}
+.terminal>div{font-size:11px;line-height:1.7;gap:16px;flex-wrap:wrap;border-color:var(--reading-line)}
+.terminal p{font-size:14px;line-height:1.8}
+.terminal code:before{color:var(--reading-muted)}
+.docs-cta{color:#f6f3ec}
+.docs-cta .eyebrow{color:#d5ff4a}
+.docs-cta em{color:#ff7bd0}
+footer>p,footer>div{font-size:11px;line-height:1.8;letter-spacing:.3px}
+footer{flex-wrap:wrap}
+:root[data-theme="day"] .marquee{background:#f3a8d4;color:#241d29}
+@media(max-width:700px){
+ .top-tape{font-size:10px;letter-spacing:.4px}.top-tape span{padding:0 6px}
+ .site-nav nav{font-size:12px;gap:10px}.theme-switch{padding:8px 10px}
+ .edition{font-size:11px}.subtitle p{font-size:16px}
+ .hero-buttons{flex-wrap:wrap}.hero-buttons .button{font-size:12px;flex:1 1 180px}
+ .hero-footnote{font-size:11px;gap:8px}
+ .orbit-peer b{font-size:11px}.orbit-peer{padding:10px}
+ .network-callout{font-size:11px;bottom:15px}.art-caption{font-size:10px;bottom:-35px;right:0;text-align:center}
+ .groove-heading>p,.feature p,.ownership-heading>p,.ownership-cards p{font-size:15px}
+ .feature-tag{font-size:11px}.honesty{font-size:13px}
+ .download-card{grid-template-columns:35px 1fr;gap:0 12px}
+ .download-card small{font-size:13px}.download-card b{grid-column:2;grid-row:auto;justify-self:start;font-size:11px;margin-top:12px}
+ .download-notes{font-size:11px;max-width:none}.terminal>div{font-size:11px}.terminal p{font-size:14px}
+ footer>p,footer>div{font-size:11px}footer>div{flex-wrap:wrap}
+}
