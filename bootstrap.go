@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -70,7 +71,11 @@ func NewBootstrap(dir, listen string) (*Bootstrap, error) {
 	if err != nil {
 		return nil, err
 	}
-	h, err := libp2p.New(libp2p.Identity(priv), libp2p.ListenAddrStrings(listen), libp2p.EnableNATService())
+	listeners := []string{listen}
+	if websocket := os.Getenv("RADCHAT_WS_P2P"); websocket != "" {
+		listeners = append(listeners, websocket)
+	}
+	h, err := libp2p.New(libp2p.Identity(priv), libp2p.ListenAddrStrings(listeners...), libp2p.EnableNATService())
 	if err != nil {
 		return nil, err
 	}

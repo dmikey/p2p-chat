@@ -1,0 +1,33 @@
+services:
+  relay:
+    image: ${RADCHAT_IMAGE:?Set an immutable image digest}
+    container_name: radchat-relay
+    restart: unless-stopped
+    environment:
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:?Set SendGrid key}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:?Set verified sender}
+      SENDGRID_FROM_NAME: Rad Chat
+      RADCHAT_PUBLIC_P2P: /dns4/chat.therad.ninja/tcp/443/wss
+      RADCHAT_WS_P2P: /ip4/0.0.0.0/tcp/4002/ws
+    ports:
+      - "127.0.0.1:3332:8788"
+      - "127.0.0.1:3333:4002"
+      - "4001:4001"
+    volumes:
+      - ./state:/state
+    read_only: true
+    cap_drop: [ALL]
+    # RadOps Snap Docker rejects exec with no-new-privileges; image stays non-root
+    # with all capabilities dropped and a read-only root filesystem.
+    mem_limit: 192m
+    cpus: 0.75
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+    healthcheck:
+      test: ["CMD", "/radchat", "healthcheck", "http://127.0.0.1:8788/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3

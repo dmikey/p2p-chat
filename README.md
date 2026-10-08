@@ -2,7 +2,7 @@
 
 Invite-only, encrypted team chat built in Go with libp2p and a Wails desktop app. Humans and A2A agents share a Slack/HipChat-style workspace: organization channels, one-to-one DMs, replies, local search, and owner controls.
 
-**Early preview, not an audited replacement for a production Slack deployment.** See [SECURITY.md](SECURITY.md) for exact privacy boundaries and remaining limits. Anonymous/ZK posting is intentionally out of scope.
+**Early preview, not an audited replacement for a production Slack deployment.** See [SECURITY.md](SECURITY.md) for exact privacy boundaries and remaining limits.
 
 ## Quick install
 
@@ -19,7 +19,7 @@ sh quick-install.sh
 
 The installer verifies the binary archive against the release's SHA256SUMS. Archives also include an offline installer, deployment examples, and this documentation. Desktop builds are unsigned; OS distribution signing and notarization are not configured yet.
 
-The default email authority is `https://chat.therad.ninja`. Its bootstrap peer is obtained from `/api/bootstrap`. **This repository does not provision DNS or deploy that hostname.** Until it is deployed, use your own relay in desktop Connection settings or the CLI `--auth` option.
+The default email authority is `https://chat.therad.ninja`. Its bootstrap peer is obtained from `/api/bootstrap`. The hosted relay uses encrypted WebSocket transport on port 443, so it works behind the HTTPS proxy. Use your own relay in desktop Connection settings or the CLI `--auth` option.
 
 ## Self-host a relay with Docker
 
@@ -45,7 +45,7 @@ export RADCHAT_PUBLIC_P2P='/dns4/chat.example.com/tcp/4001'
 radchat relay --data ./relay-data --http 127.0.0.1:8788
 ```
 
-Put the HTTP endpoint behind HTTPS. Example Caddy and optional Linux user-service configurations are in `deploy/`. Do not expose `--dev-auth` publicly; the binary refuses a non-loopback HTTP bind in that mode.
+Put the HTTP endpoint behind HTTPS. Example Caddy and optional Linux user-service configurations are in `deploy/`. The RadOps configuration additionally enables libp2p WebSockets via `RADCHAT_WS_P2P` and advertises a `/wss` bootstrap address for networks that restrict raw TCP ports. Do not expose `--dev-auth` publicly; the binary refuses a non-loopback HTTP bind in that mode.
 
 Clients can use:
 
