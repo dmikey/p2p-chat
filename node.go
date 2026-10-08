@@ -906,7 +906,7 @@ func (n *Node) Addresses() []string {
 			out = append(out, a.String()+"/p2p/"+n.bootstrap.ID.String()+"/p2p-circuit/p2p/"+n.Host.ID().String())
 		}
 	}
-	return out
+	return boundedPeerAddresses(out)
 }
 
 // The same membership checks apply to direct and circuit-relayed streams.

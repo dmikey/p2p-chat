@@ -23,6 +23,20 @@ type ServiceClientRequest struct {
 	Accepted  bool   `json:"accepted"`
 }
 
+// Machines running many containers can expose dozens of bridge interfaces.
+// Keep advertisements within the protocol limit and preserve the relay route
+// so contributors behind NAT remain reachable.
+func boundedPeerAddresses(addresses []string) []string {
+	out := append([]string(nil), addresses...)
+	sort.SliceStable(out, func(i, j int) bool {
+		return strings.Contains(out[i], "/p2p-circuit") && !strings.Contains(out[j], "/p2p-circuit")
+	})
+	if len(out) > 16 {
+		out = out[:16]
+	}
+	return out
+}
+
 func VerifyServiceCard(s Signed) (ServiceCard, error) {
 	var c ServiceCard
 	if json.Unmarshal(s.Payload, &c) != nil {
@@ -40,8 +54,11 @@ func VerifyServiceCard(s Signed) (ServiceCard, error) {
 	if e != nil {
 		return c, e
 	}
-	if s.verify(raw, &c) != nil || c.Expires < time.Now().Unix() || c.Expires > time.Now().Add(2*time.Minute).Unix() || c.Protocol != string(ServiceProtocol) || c.ID == "" || len(c.Addresses) > 16 {
+	if s.verify(raw, &c) != nil || c.Expires < time.Now().Unix() || c.Expires > time.Now().Add(2*time.Minute).Unix() || c.Protocol != string(ServiceProtocol) || c.ID == "" {
 		return c, errors.New("expired or unverified service")
+	}
+	if len(c.Addresses) > 16 {
+		return c, errors.New("service advertises too many network addresses")
 	}
 	return c, nil
 }

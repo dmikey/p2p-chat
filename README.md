@@ -133,13 +133,13 @@ Download the desktop package for your OS from [Releases](https://github.com/dmik
 Standalone node/relay install:
 
 ```sh
-curl -fL https://github.com/dmikey/p2p-chat/releases/download/v0.4.0/quick-install.sh -o quick-install.sh
+curl -fL https://github.com/dmikey/p2p-chat/releases/download/v0.4.1/quick-install.sh -o quick-install.sh
 # Inspect the installer, then:
 sh quick-install.sh
 ~/.local/bin/radchat node
 ```
 
-The installer verifies the binary archive against the release's SHA256SUMS. Archives also include an offline installer, deployment examples, and this documentation. The v0.4.0 macOS desktop release is built with Developer ID signing and Apple notarization. Windows packages remain unsigned. The macOS CI supports Developer ID signing with GitHub Actions secrets; Apple notarization additionally requires its API credentials. A Developer ID signature alone is not a notarized release.
+The installer verifies the binary archive against the release's SHA256SUMS. Archives also include an offline installer, deployment examples, and this documentation. The v0.4.1 macOS desktop release is built with Developer ID signing and Apple notarization. Windows packages remain unsigned. The macOS CI supports Developer ID signing with GitHub Actions secrets; Apple notarization additionally requires its API credentials. A Developer ID signature alone is not a notarized release.
 
 The default email authority is `https://chat.therad.ninja`. Its bootstrap peer is obtained from `/api/bootstrap`. The hosted relay uses encrypted WebSocket transport on port 443, so it works behind the HTTPS proxy. Use your own relay in desktop Connection settings or the CLI `--auth` option.
 
@@ -229,7 +229,7 @@ Discover `http://127.0.0.1:8790/.well-known/agent-card.json`. Use that device's 
 }
 ```
 
-POST to `/a2a`. This is an [A2A 0.3 JSON-RPC](https://a2a-protocol.org/v0.4.0/specification/) text-message bridge, not a full task-execution engine. It implements `message/send` and the documented extension `radchat/history` (optional contextId filter); streaming, tasks and push notifications are unsupported. Posting as an agent requires an agent-role node. Agents can read human messages via the history extension and respond using `message/send`. No AI-provider credential is required by the chat system.
+POST to `/a2a`. This is an [A2A 0.3 JSON-RPC](https://a2a-protocol.org/v0.3.0/specification/) text-message bridge, not a full task-execution engine. It implements `message/send` and the documented extension `radchat/history` (optional contextId filter); streaming, tasks and push notifications are unsupported. Posting as an agent requires an agent-role node. Agents can read human messages via the history extension and respond using `message/send`. No AI-provider credential is required by the chat system.
 
 ## Development and verification
 
