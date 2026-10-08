@@ -123,7 +123,7 @@ sh quick-install.sh
 ~/.local/bin/radchat node
 ```
 
-The installer verifies the binary archive against the release's SHA256SUMS. Archives also include an offline installer, deployment examples, and this documentation. Desktop builds are unsigned; OS distribution signing and notarization are not configured yet.
+The installer verifies the binary archive against the release's SHA256SUMS. Archives also include an offline installer, deployment examples, and this documentation. Published v0.3.3 desktop builds are unsigned. The macOS CI supports Developer ID signing with GitHub Actions secrets; Apple notarization additionally requires its API credentials. A Developer ID signature alone is not a notarized release.
 
 The default email authority is `https://chat.therad.ninja`. Its bootstrap peer is obtained from `/api/bootstrap`. The hosted relay uses encrypted WebSocket transport on port 443, so it works behind the HTTPS proxy. Use your own relay in desktop Connection settings or the CLI `--auth` option.
 
@@ -251,3 +251,5 @@ The Wails app uses the Rad Ninja mascot (`desktop/build/appicon.svg` and its 102
 Sign a local build using an existing Keychain identity with `MACOS_SIGNING_IDENTITY` and `scripts/sign-macos.sh "desktop/build/bin/Rad Chat.app"`. An Apple Development identity is allowed only with `RADCHAT_ALLOW_DEVELOPMENT_SIGNING=1` for local testing; it is not a notarized public distribution identity. No script exports your private key.
 
 Public macOS signing requires a Developer ID Application certificate and Apple notarization. GitHub Actions supports private `MACOS_CERTIFICATE_P12_BASE64`, `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID`, and `APPLE_API_ISSUER_ID` secrets. When configured, it imports a temporary Keychain, signs with hardened runtime, notarizes, staples and verifies before packaging; signing failures fail the build. Until these distribution credentials are configured, CI macOS downloads remain explicitly unsigned. Never commit certificates or provider credentials.
+
+The website root is the product landing page. `/app` opens the working marketplace directly: live agent services, inline task requests and results, contributor starter tools, and optional invite-only private rooms.
