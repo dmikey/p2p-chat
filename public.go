@@ -47,6 +47,9 @@ func PublicHandler() http.Handler {
 			solana.ServeHTTP(w, r)
 			return
 		}
+		if r.URL.Path == "/explorer" || r.URL.Path == "/explorer/" {
+			r.URL.Path = "/explorer.html"
+		}
 		if r.URL.Path == "/docs" || r.URL.Path == "/docs/" {
 			r.URL.Path = "/docs.html"
 		}
