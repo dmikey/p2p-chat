@@ -26,12 +26,13 @@ import (
 const ServiceProtocol protocol.ID = "/radchat/service/1.0.0"
 
 type ServiceOffer struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Skill       string   `json:"skill"`
-	Version     string   `json:"version"`
-	Permissions []string `json:"permissions"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	Skill        string   `json:"skill"`
+	Version      string   `json:"version"`
+	Permissions  []string `json:"permissions"`
+	Instructions string   `json:"-"`
 }
 type ServiceCard struct {
 	ServiceOffer
@@ -69,18 +70,19 @@ type WorkTask struct {
 	Attestation Signed `json:"attestation"`
 }
 type TaskView struct {
-	ID       string `json:"id"`
-	Service  string `json:"service"`
-	Version  string `json:"version"`
-	Buyer    string `json:"buyer"`
-	Worker   string `json:"worker"`
-	Digest   string `json:"digest"`
-	State    string `json:"state"`
-	Created  int64  `json:"created"`
-	Updated  int64  `json:"updated"`
-	Result   string `json:"result,omitempty"`
-	Error    string `json:"error,omitempty"`
-	Feedback *bool  `json:"feedback,omitempty"`
+	ID         string `json:"id"`
+	Service    string `json:"service"`
+	Version    string `json:"version"`
+	Buyer      string `json:"buyer"`
+	Worker     string `json:"worker"`
+	Digest     string `json:"digest"`
+	State      string `json:"state"`
+	Created    int64  `json:"created"`
+	Updated    int64  `json:"updated"`
+	Result     string `json:"result,omitempty"`
+	Error      string `json:"error,omitempty"`
+	Feedback   *bool  `json:"feedback,omitempty"`
+	Completion Signed `json:"completion,omitempty"`
 }
 type TaskFeedback struct {
 	TaskID   string `json:"taskId"`
@@ -116,12 +118,13 @@ type ServiceOptions struct {
 	Execute       func(context.Context, ServiceOffer, string) (string, error)
 }
 type ServiceWorker struct {
-	n       *Node
-	opts    ServiceOptions
-	mu      sync.Mutex
-	tasks   map[string]*WorkTask
-	running int
-	wake    chan struct{}
+	n        *Node
+	opts     ServiceOptions
+	mu       sync.Mutex
+	tasks    map[string]*WorkTask
+	running  int
+	wake     chan struct{}
+	disabled map[string]bool
 }
 
 // StartServiceWorker exposes reusable execution plumbing, not operator pricing or keys.
@@ -140,7 +143,7 @@ func (n *Node) StartServiceWorker(opts ServiceOptions) (*ServiceWorker, error) {
 		}
 		seen[o.ID] = true
 	}
-	w := &ServiceWorker{n: n, opts: opts, tasks: map[string]*WorkTask{}, wake: make(chan struct{}, 1)}
+	w := &ServiceWorker{n: n, opts: opts, tasks: map[string]*WorkTask{}, wake: make(chan struct{}, 1), disabled: map[string]bool{}}
 	b, e := os.ReadFile(filepath.Join(n.cfg.Dir, "work.enc"))
 	if e == nil {
 		b, e = open(n.key, b, "radchat-work-v1")
@@ -174,6 +177,9 @@ func (w *ServiceWorker) saveLocked() error {
 	return atomicWrite(filepath.Join(w.n.cfg.Dir, "work.enc"), b)
 }
 func (w *ServiceWorker) offer(id string) (ServiceOffer, bool) {
+	if w.disabled[id] {
+		return ServiceOffer{}, false
+	}
 	for _, o := range w.opts.Offers {
 		if o.ID == id {
 			return o, true
@@ -189,7 +195,11 @@ func (w *ServiceWorker) identity() ed25519.PrivateKey {
 	return ed25519.PrivateKey(raw)
 }
 func (w *ServiceWorker) view(t *WorkTask) Signed {
-	return sign(TaskView{t.ID, t.Service, t.Version, t.Buyer, w.n.Host.ID().String(), t.Digest, t.State, t.Created, t.Updated, t.Result, t.Error, t.Feedback}, w.identity())
+	v := TaskView{ID: t.ID, Service: t.Service, Version: t.Version, Buyer: t.Buyer, Worker: w.n.Host.ID().String(), Digest: t.Digest, State: t.State, Created: t.Created, Updated: t.Updated, Result: t.Result, Error: t.Error, Feedback: t.Feedback}
+	if t.State == "completed" {
+		v.Completion = sign(CompletionEvidence{Domain: "radchat-test-completion-v1", ID: t.ID, Service: t.Service, Version: t.Version, Worker: w.n.Host.ID().String(), Buyer: t.Buyer, Digest: t.Digest, Completed: t.Updated}, w.identity())
+	}
+	return sign(v, w.identity())
 }
 func (w *ServiceWorker) handle(s network.Stream) {
 	defer s.Close()
@@ -388,8 +398,16 @@ func (w *ServiceWorker) dispatch() {
 func (w *ServiceWorker) execute(task WorkTask, lease string) {
 	ctx, cancel := context.WithTimeout(w.n.ctx, 60*time.Second)
 	defer cancel()
-	offer, _ := w.offer(task.Service)
-	text, e := w.opts.Execute(ctx, offer, task.Prompt)
+	w.mu.Lock()
+	offer, available := w.offer(task.Service)
+	w.mu.Unlock()
+	var text string
+	var e error
+	if available {
+		text, e = w.opts.Execute(ctx, offer, task.Prompt)
+	} else {
+		e = errors.New("service paused")
+	}
 	if e == nil && (strings.TrimSpace(text) == "" || len(text) > 12000) {
 		e = errors.New("invalid agent result")
 	}
@@ -455,6 +473,9 @@ func (w *ServiceWorker) Catalog() []Signed {
 	defer w.mu.Unlock()
 	out := []Signed{}
 	for _, o := range w.opts.Offers {
+		if w.disabled[o.ID] {
+			continue
+		}
 		out = append(out, sign(ServiceCard{o, w.n.Host.ID().String(), w.n.Addresses(), string(ServiceProtocol), time.Now().Add(90 * time.Second).Unix(), w.opts.Slots - w.running, w.reputation(o.ID)}, w.identity()))
 	}
 	sort.Slice(out, func(i, j int) bool {

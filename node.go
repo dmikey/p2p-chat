@@ -57,6 +57,8 @@ type Node struct {
 	closeErr           error
 	contributorMu      sync.Mutex
 	contributed        *Node
+	publicNode         *Node
+	publicWorker       *ServiceWorker
 	runner             Runner
 	Host               host.Host
 	Auth               *AuthClient
@@ -222,6 +224,9 @@ func (n *Node) Close() error {
 		n.contributorMu.Lock()
 		if n.contributed != nil {
 			n.contributed.Close()
+		}
+		if n.publicNode != nil {
+			n.publicNode.Close()
 		}
 		n.contributorMu.Unlock()
 		n.stopTopic()

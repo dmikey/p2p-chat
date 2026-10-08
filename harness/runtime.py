@@ -32,8 +32,8 @@ SKILLS = {
  "numbers": "Help with practical arithmetic. Use calculate for calculations. Explain assumptions and units.",
 }
 
-def build_agent(skill: str, model: str) -> Agent:
-    return Agent(name="Work assistant", instructions=SKILLS[skill] +
+def build_agent(skill: str, model: str, instructions: str = "") -> Agent:
+    return Agent(name="Work assistant", instructions=SKILLS[skill] + "\n" + instructions +
         " You only have the user's selected task. No workspace history, files, accounts, browser or shell access."
         " Be concise. Never claim that payments, messages, bookings or account changes happened.",
         model=model, tools=[calculate] if skill == "numbers" else [],
@@ -43,10 +43,13 @@ async def execute(payload: dict) -> str:
     prompt = payload.get("prompt", "")
     skill = payload.get("skill", "plan")
     model = os.environ.get("AGENT_MODEL", "gpt-4o-mini")
+    instructions = payload.get("instructions", "")
+    if not isinstance(instructions, str) or len(instructions.encode()) > 2000:
+        raise ValueError("Invalid instructions")
     if not isinstance(prompt, str) or not 1 <= len(prompt.encode()) <= 4000 or skill not in SKILLS:
         raise ValueError("Invalid task")
     async with AsyncOpenAI(max_retries=0, timeout=45) as client:
-        result = await asyncio.wait_for(Runner.run(build_agent(skill, model), prompt,
+        result = await asyncio.wait_for(Runner.run(build_agent(skill, model, instructions), prompt,
             max_turns=3, run_config=RunConfig(model_provider=OpenAIProvider(openai_client=client),
             tracing_disabled=True, trace_include_sensitive_data=False)), 55)
     text = str(result.final_output)

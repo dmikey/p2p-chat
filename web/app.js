@@ -67,7 +67,7 @@ function renderNetwork(){
 }
 $('network-status').onclick=()=>$('network-dialog').showModal();
 $('path-user').onclick=()=>{showServices();};
-$('path-contributor').onclick=()=>$('contributor-start-dialog').showModal();
+$('path-contributor').onclick=showContributor;
 $('rooms-entry').onclick=()=>$('rooms-entry-dialog').showModal();
 $('network-economy').onclick=showEconomy;
 $('runner-provider').onchange=()=>{const local=$('runner-provider').value==='harness';$('runner-model').disabled=local;$('runner-model').required=!local;$('runner-model').placeholder=local?'Configured by your local runtime':'Enter your provider’s model ID'};
@@ -101,3 +101,33 @@ $('service-good').onclick=()=>serviceFeedback(true);$('service-bad').onclick=()=
 $('services-button').onclick=showServices;$('services-welcome').onclick=showServices;
 // Resolve device state before mounting discovery so existing rooms keep their navigation.
 refresh().then(()=>{if(!state?.org||new URLSearchParams(location.search).has('agents'))showServices()});
+
+async function showContributor(){
+ $('contributor-start-dialog').showModal();$('market-email').value=state?.email||'';$('market-person').value=state?.name||'';
+ for(const option of $('market-agent-runtime').options){if(option.value!=='hosted'){option.disabled=state?.runtime==='browser';option.hidden=state?.runtime==='browser'}}
+ try{await loadContributor()}catch(e){$('market-studio').hidden=true;$('market-email-form').hidden=false;$('market-credit-status').textContent=e.message}
+}
+async function loadContributor(){
+ const signed=await api('/api/market',{action:'profile'}),p=signed.payload;
+ $('market-balance').textContent=String(p.balance);$('market-credit-status').textContent='Operator-verified test credits · '+p.program;
+ $('market-email-form').hidden=true;$('market-code-form').hidden=true;$('market-studio').hidden=false;
+ const list=$('market-agents');list.replaceChildren();
+ if(!p.agents.length)list.append(el('p','subtle','Your first agent starts below.'));
+ for(const a of p.agents){const row=el('article','market-agent-row'),details=el('div','');details.append(el('strong','',a.name),el('small','',`${a.runtime==='radops-hosted'?'Hosted on RadOps':'Desktop · bring your own model'} · ${a.active?'Published':'Paused / offline'}`));row.append(details);
+ const tryButton=el('button','text-button','Try agent ↗');tryButton.disabled=!a.active;tryButton.onclick=async()=>{$('contributor-start-dialog').close();await showServices();chooseService(a.id)};row.append(tryButton);
+ const pause=el('button','secondary compact',a.active?'Pause':'Resume');pause.disabled=a.runtime!=='radops-hosted'&&!state?.publicAgent?.active;pause.onclick=async()=>{pause.disabled=true;try{if(a.runtime==='radops-hosted')await api('/api/market',{action:'agents/toggle',agent:{id:a.id,active:!a.active}});else await api('/api/contribute',{action:'stop'});await refresh();await loadContributor();notice(a.runtime==='radops-hosted'?'Agent availability updated.':'Desktop agent stopped. Catalog entry expires within 90 seconds.')}catch(e){notice(e.message)}finally{pause.disabled=false}};row.append(pause);list.append(row)}
+ const events=$('market-events');events.replaceChildren();if(!p.events.length)events.append(el('p','subtle','No credits yet. Publishing qualifies for one joining credit; accepted work by other buyers can qualify for work credits.'));
+ for(const e of p.events.slice(0,30)){const row=el('div','market-credit-event');row.append(el('strong','',`+${e.points} · ${e.kind==='join'?'Joining contribution':'Accepted agent work'}`),el('small','',new Date(e.created).toLocaleString()));events.append(row)}
+}
+$('market-refresh').onclick=()=>loadContributor().catch(e=>notice(e.message));
+busy($('market-email-form'),async()=>{const r=await api('/api/auth/request',{email:$('market-email').value});$('market-email-form').hidden=true;$('market-code-form').hidden=false;$('market-code-help').textContent=r.devCode?'Local test code: '+r.devCode:'Check your inbox. Codes expire after ten minutes.';if(r.devCode)$('market-code').value=r.devCode;$('market-code').focus()});
+busy($('market-code-form'),async()=>{await api('/api/auth/verify',{email:$('market-email').value,code:$('market-code').value,name:$('market-person').value});verifiedThisRun=true;state=await api('/api/state');await loadContributor()});
+$('market-agent-runtime').onchange=()=>{const local=$('market-agent-runtime').value!=='hosted';$('market-model-fields').hidden=!local;$('market-agent-model').required=local;$('market-agent-key').required=local};
+busy($('market-agent-form'),async()=>{
+ const agent={name:$('market-agent-name').value,description:$('market-agent-description').value,instructions:$('market-agent-instructions').value,skill:$('market-agent-skill').value};
+ const provider=$('market-agent-runtime').value;
+ try{if(provider==='hosted')await api('/api/market',{action:'agents/create',agent});else await api('/api/contribute',{action:'start',config:{agent,provider,model:$('market-agent-model').value,apiKey:$('market-agent-key').value,calls:Number($('market-agent-calls').value),consent:$('market-agent-consent').checked}});
+ await refresh();await loadContributor();$('market-agent-form').reset();$('market-model-fields').hidden=true;$('market-agent-model').required=false;$('market-agent-key').required=false;notice('Agent published. Other people can dispatch tasks from the marketplace.');
+ }finally{$('market-agent-key').value=''}
+});
+$('credits-open-studio').onclick=()=>{$('economy-dialog').close();showContributor()};

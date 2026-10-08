@@ -9,13 +9,38 @@ decision; credits must never silently become spendable currency.
 
 ## Current state
 
-The Go allocation calculator exists in `contribution.go` and has security tests.
-It verifies reviewer signatures and applies a frozen epoch policy to a complete
-batch. It is not connected to live issuance. Admission review, independently
-measured compute/model evidence, persistent allocation storage, reviewer operation,
-and the private authenticated credits dashboard still need implementation. The
-live preview issues no credits. Existing catalog counts and buyer-feedback scores
-are insufficient evidence for allocations.
+The hosted testnet supports agent publishing, direct P2P task dispatch, buyer
+acceptance, a private credit balance and an encrypted persistent credit journal.
+The `radchat-testnet-1` program awards **1 joining test credit** after publishing or
+qualifying acceptance, and **10 operation credits** for another verified email's
+accepted work. Repeated feedback cannot duplicate an award. A buyer, contributor
+and service combination qualifies once per UTC day; work rewards are capped at
+100 per contributor per UTC day. The total program cap is 1,000,000 credits.
+Self-review does not qualify. Hosted agents share limited RadOps capacity; desktop
+agents can use contributor-owned OpenAI, Claude or local-harness access.
+
+This is a **single-operator test program**, using signed worker completion and
+signed buyer acceptance. It is not independent admission review, proof of unique
+humans or validator consensus. Compute and BYOM usage allocations are disabled;
+accepted work by BYOM agents can earn operation credits. Credits do not repay model
+bills and have no promised conversion into tokens. Wallet funding is not needed
+for the hosted preview. Rates are published here and in the app; future changes
+must use a new program version and preserve old event history.
+
+`Market` stores credit events and agent definitions in encrypted `market.enc` on
+the explicit worker/coordinator, not the relay. The compact evidence excludes task
+text, results, email addresses and provider credentials. Native service ownership
+requires co-signatures by both owner and worker. Profile access uses the caller's
+fresh device-bound email proof; opaque member IDs are scoped to the coordinator.
+The journal is committed atomically before acknowledgment, and restarting restores
+balances, service definitions and replay keys. Public catalog aggregates do not
+award credits. Test identities and email aliases do not establish personhood.
+
+The separate production-policy calculator in `contribution.go` verifies an
+independent review quorum and frozen allocation epochs. Production admission,
+independently measured usage, independent reviewers and a finalized production
+allocation service remain unimplemented. The production design below must not be
+confused with the running operator-verified test program.
 
 ## Four ways to contribute
 

@@ -123,7 +123,7 @@ func (d *Desktop) Call(path, body string) (string, error) {
 		}
 		return "", errors.New("connect to a relay using Connection settings")
 	}
-	allowed := map[string]bool{"/api/services": true, "/api/economy": true, "/api/runner": true, "/api/state": true, "/api/messages": true, "/api/auth/request": true, "/api/auth/verify": true, "/api/org/create": true, "/api/org/join": true, "/api/invites": true, "/api/org/policy": true, "/api/accounts": true}
+	allowed := map[string]bool{"/api/services": true, "/api/market": true, "/api/contribute": true, "/api/economy": true, "/api/runner": true, "/api/state": true, "/api/messages": true, "/api/auth/request": true, "/api/auth/verify": true, "/api/org/create": true, "/api/org/join": true, "/api/invites": true, "/api/org/policy": true, "/api/accounts": true}
 	if !allowed[path] {
 		return "", errors.New("unsupported operation")
 	}

@@ -174,12 +174,22 @@ export class BrowserNode {
   for(const addr of card.addresses){if(!addr.endsWith('/p2p/'+card.peer)||!addr.includes('/wss')&&!(location.hostname==='127.0.0.1'&&addr.includes('/ws')))continue;try{res=await this.rpc(addr,card.protocol,req);break}catch(e){lastError=e}}
   if(!res)fail(lastError?.message||'This agent is not reachable yet');if(res.error)fail(res.error.message||'Task unavailable');const receipt=res.result.metadata['radchat/receipt'],view=C.verify(receipt,C.peerPublic(card.peer));
   if(view.buyer!==this.peer||view.worker!==card.peer||view.service!==p.service||(p.taskId&&view.id!==p.taskId))fail('Task receipt mismatch');
-  this.v.tasks=this.v.tasks||[];this.v.tasks=this.v.tasks.filter(s=>s.payload.id!==view.id&&s.payload.created>Date.now()-86400000);this.v.tasks.push(receipt);await this.save();return receipt;
+  this.v.tasks=this.v.tasks||[];this.v.tasks=this.v.tasks.filter(s=>s.payload.id!==view.id&&s.payload.created>Date.now()-86400000);this.v.tasks.push(receipt);await this.save();
+  if(p.action==='tasks/feedback'&&p.accepted&&card.id.startsWith('agent-'))await this.marketCall({action:'tasks/attest',completion:view.completion,feedback:req.feedback});
+  return receipt;
+ }
+ async marketCall(request){
+  this.requireVerified();const endpoint=await this.http('/api/market');
+  if(endpoint.protocol!=='/radchat/market/1.0.0'||!Array.isArray(endpoint.addresses)||endpoint.addresses.length>16)fail('Invalid marketplace endpoint');
+  const addresses=endpoint.addresses.filter(a=>a.endsWith('/p2p/'+endpoint.peer)&&a.includes('/wss'));let result,lastError;
+  for(const address of addresses){try{result=await this.rpc(address,endpoint.protocol,{...request,proof:this.v.proof});break}catch(e){lastError=e}}
+  if(!result)fail(lastError?.message||'Marketplace coordinator unavailable');C.verify(result,C.peerPublic(endpoint.peer));return result;
  }
  async call(path,body){
   const p=body?JSON.parse(body):undefined,o=this.v.org;
   if(path==='/api/state')return {runtime:'browser',peer:this.peer,name:this.v.name,email:this.v.email,kind:'human',addresses:this.node.getMultiaddrs().map(a=>a.toString()),peers:this.node.getConnections().map(c=>({id:c.remotePeer.toString(),bootstrap:c.remotePeer.toString()===this.bootPeer,relayed:c.remoteAddr.toString().includes('/p2p-circuit')})),networkError:this.error,authorized:this.active(),deactivated:Boolean(o?.access&&!o.access.payload.active[this.peer]),org:o?{id:o.id,name:o.name,owner:Boolean(o.rootSeed),policy:{...o.policy.payload,deactivated:{...o.policy.payload.deactivated,...(o.access&&!o.access.payload.active[this.peer]?{[this.peer]:Date.now()}:{})}},members:o.members.map(s=>s.payload)}:null};
   if(path==='/api/economy')return this.http(path);
+  if(path==='/api/market')return this.marketCall(p);
   if(path==='/api/services')return p?this.serviceCall(p):this.services();
   if(path==='/api/tasks')return {tasks:(this.v.tasks||[]).filter(s=>s.payload.created>Date.now()-86400000)};
   if(path==='/api/auth/request')return this.http(path,{email:p.email,peer:this.peer});

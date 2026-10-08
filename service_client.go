@@ -156,6 +156,11 @@ func (n *Node) ServiceCall(ctx context.Context, p ServiceClientRequest) (Signed,
 	if receipt.verify(raw, &view) != nil || view.Worker != card.Peer || view.Buyer != n.Host.ID().String() || view.Service != card.ID || (p.TaskID != "" && p.TaskID != view.ID) {
 		return Signed{}, errors.New("invalid task receipt")
 	}
+	if p.Action == "tasks/feedback" && p.Accepted && strings.HasPrefix(card.ID, "agent-") {
+		if _, e := n.MarketCall(ctx, MarketRequest{Action: "tasks/attest", Completion: view.Completion, Feedback: req.Feedback}); e != nil {
+			return Signed{}, e
+		}
+	}
 	return receipt, nil
 }
 func (n *Node) serviceHandler(w http.ResponseWriter, r *http.Request) {

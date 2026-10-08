@@ -52,6 +52,7 @@ func (n *Node) State() map[string]any {
 		peers = append(peers, map[string]any{"id": p.String(), "relayed": relayed, "bootstrap": n.bootstrap != nil && p == n.bootstrap.ID})
 	}
 	out["runner"] = n.runnerNode().runner.Snapshot()
+	out["publicAgent"] = n.publicProfile()
 	out["peers"] = peers
 	return out
 }
@@ -69,6 +70,51 @@ func (n *Node) Handler() http.Handler {
 	})
 	api := http.NewServeMux()
 	api.Handle("/api/economy", SolanaHandler())
+	api.HandleFunc("/api/market", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			w.WriteHeader(405)
+			return
+		}
+		var p MarketRequest
+		if bodyJSON(w, r, &p) != nil {
+			respond(w, 400, map[string]string{"error": "invalid market request"})
+			return
+		}
+		out, e := n.MarketCall(r.Context(), p)
+		if e != nil {
+			respond(w, 400, map[string]string{"error": e.Error()})
+			return
+		}
+		respond(w, 200, out)
+	})
+	api.HandleFunc("/api/contribute", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			w.WriteHeader(405)
+			return
+		}
+		var p struct {
+			Action string            `json:"action"`
+			Config PublicAgentConfig `json:"config"`
+		}
+		if bodyJSON(w, r, &p) != nil {
+			respond(w, 400, map[string]string{"error": "invalid contributor request"})
+			return
+		}
+		var e error
+		switch p.Action {
+		case "start":
+			e = n.PublishPublicAgent(r.Context(), p.Config)
+		case "stop":
+			n.StopPublicAgent()
+		default:
+			e = fmt.Errorf("unsupported contributor action")
+		}
+		if e != nil {
+			respond(w, 400, map[string]string{"error": e.Error()})
+			return
+		}
+		respond(w, 200, n.publicProfile())
+	})
 	api.HandleFunc("/api/services", n.serviceHandler)
 	api.HandleFunc("/api/runner", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
