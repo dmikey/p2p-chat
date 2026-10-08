@@ -1,0 +1,7 @@
+data/
+bin/
+.env
+*.recovery
+output/
+desktop/build/bin/
+web/wailsjs/

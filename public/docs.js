@@ -1,0 +1,4 @@
+'use strict';
+document.querySelectorAll('pre').forEach(pre=>{const button=document.createElement('button');button.className='copy-code';button.textContent='COPY';button.type='button';button.setAttribute('aria-label','Copy code example');button.onclick=async()=>{try{await navigator.clipboard.writeText(pre.querySelector('code').textContent);button.textContent='COPIED ✓';setTimeout(()=>button.textContent='COPY',2000)}catch{button.textContent='SELECT TO COPY'}};pre.append(button)});
+const sections=document.querySelectorAll('.docs-content section');const links=document.querySelectorAll('.docs-sidebar nav a');
+if('IntersectionObserver' in window){const observer=new IntersectionObserver(entries=>{for(const entry of entries){if(entry.isIntersecting){links.forEach(a=>a.classList.toggle('active',a.hash==='#'+entry.target.id))}}},{rootMargin:'-15% 0px -65% 0px'});sections.forEach(s=>observer.observe(s))}

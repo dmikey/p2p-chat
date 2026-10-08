@@ -1,0 +1,11 @@
+{
+ "$schema": "https://wails.io/schemas/config.v2.json",
+ "name": "Rad Chat",
+ "outputfilename": "Rad Chat",
+ "frontend:dir": "../web",
+ "frontend:install": "",
+ "frontend:build": "",
+ "frontend:dev:watcher": "",
+ "author": {"name":"Derek Anderson"},
+ "info": {"companyName":"Rad Ninja","productName":"Rad Chat","productVersion":"0.1.0","copyright":"Copyright 2026 Derek Anderson","comments":"Private peer-to-peer team chat"}
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=Rad Chat self-hosted relay and email authority
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/radchat/relay.env
+ExecStart=%h/.local/bin/radchat relay --data %h/.local/share/radchat/relay --http 127.0.0.1:8788 --p2p /ip4/0.0.0.0/tcp/4001
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

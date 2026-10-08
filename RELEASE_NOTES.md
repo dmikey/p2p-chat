@@ -1,0 +1,3 @@
+Rad Chat early preview: a Go/libp2p team-chat node, native Wails desktop app, invite-only organizations, encrypted channels and pairwise DMs, owner-controlled history retention, deactivated/reactivated accounts with encrypted relay key grants, email OTP through SendGrid, and a local A2A text bridge.
+
+Includes standalone binaries, desktop packages, a verified archive installer, Docker Compose self-hosting, and a multiarch relay image at ghcr.io/dmikey/p2p-chat. Review README.md and SECURITY.md before deployment. Desktop packages are unsigned. chat.therad.ninja is the default configured endpoint; DNS/hosting must be deployed separately. Anonymous/ZK posting is not enabled.

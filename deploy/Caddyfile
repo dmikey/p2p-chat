@@ -1,0 +1,9 @@
+{$RADCHAT_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy relay:8788
+  header {
+    X-Content-Type-Options nosniff
+    Referrer-Policy no-referrer
+    Strict-Transport-Security "max-age=31536000"
+  }
+}
