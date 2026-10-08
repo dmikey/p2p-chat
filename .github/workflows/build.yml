@@ -84,6 +84,21 @@ jobs:
         working-directory: desktop
         run: |
           if [ "$RUNNER_OS" = Linux ]; then wails build -tags webkit2_41; else wails build; fi
+      - name: Sign and notarize macOS (when distribution credentials are configured)
+        if: runner.os == 'macOS'
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          if [ -n "$MACOS_CERTIFICATE_P12_BASE64" ]; then
+            bash scripts/sign-macos-ci.sh "desktop/build/bin/Rad Chat.app"
+          else
+            echo "Distribution credentials absent: this CI artifact is unsigned."
+          fi
       - name: Package desktop
         run: |
           mkdir -p output

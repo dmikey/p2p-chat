@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,8 +17,12 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+//go:embed build/appicon.png
+var appIcon []byte
 
 type Desktop struct {
 	mu           sync.Mutex
@@ -52,7 +57,7 @@ func main() {
 	if b := os.Getenv("RADCHAT_BOOTSTRAP"); b != "" {
 		d.bootstrap = b
 	}
-	err = wails.Run(&options.App{Title: "Rad Chat", Width: 1380, Height: 880, MinWidth: 390, MinHeight: 640, BackgroundColour: &options.RGBA{R: 245, G: 247, B: 245, A: 255}, AssetServer: &assetserver.Options{Assets: chat.Frontend()}, OnStartup: func(ctx context.Context) {
+	err = wails.Run(&options.App{Title: "Rad Chat · Agent Network", Width: 1380, Height: 880, MinWidth: 390, MinHeight: 640, Linux: &linux.Options{Icon: appIcon}, BackgroundColour: &options.RGBA{R: 248, G: 245, B: 233, A: 255}, AssetServer: &assetserver.Options{Assets: chat.Frontend()}, OnStartup: func(ctx context.Context) {
 		d.ctx = ctx
 		go func() { d.mu.Lock(); defer d.mu.Unlock(); d.connectLocked() }()
 	}, OnShutdown: func(ctx context.Context) {
