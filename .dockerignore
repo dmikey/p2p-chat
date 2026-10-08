@@ -6,3 +6,5 @@ bin
 desktop
 web/wailsjs
 *.recovery
+
+browser/node_modules

@@ -93,9 +93,6 @@ func run() error {
 	var handler http.Handler
 	var closeFn func() error
 	if mode == "relay" {
-		if !*dev && (os.Getenv("SENDGRID_API_KEY") == "" || (os.Getenv("SENDGRID_FROM_EMAIL") == "" && os.Getenv("EMAIL_FROM") == "")) {
-			return fmt.Errorf("relay requires SENDGRID_API_KEY and SENDGRID_FROM_EMAIL (or --dev-auth for loopback tests)")
-		}
 		relay, err := chat.NewBootstrap(*dir, *p2pAddr)
 		if err != nil {
 			return err

@@ -24,3 +24,11 @@ Rad Chat is an early preview. The application protocol has not had an independen
 - Release desktop packages are not OS-signed/notarized. The release checksums provide integrity relative to the downloaded checksum file; they do not replace an independent publisher signature.
 
 Report issues privately to the repository owner before public disclosure. Do not put secrets or live message exports in public issues.
+
+## Browser and contributor runtime boundaries
+
+The hosted client stores device state and encrypted history in IndexedDB, wrapped by a non-extractable WebCrypto key. The serving origin and downloaded JavaScript remain trusted: malicious client code can access decrypted content. Recovery exports are still essential; email sign-in alone does not restore keys. Browser transport currently uses encrypted circuit-relay connections over WebSockets, not WebRTC direct links.
+
+Native contributor agents receive distinct identities and owner-signed membership. They do not inherit the organization root private key. Model-provider credentials are held in memory and are never added to the device vault or recovery exports. The model-only loop sends only the configured prompt, requires approval before publishing outputs, enforces a call limit, and cancels on pause. A dispatched request can still incur provider charges. This is not an operating-system sandbox for arbitrary code; tool execution and account connectors are not implemented. Organization agents currently have the same channel visibility as other active members.
+
+Solana RPC connectivity is read-only on Testnet or Devnet. Cluster genesis is checked; mainnet settlement and transaction signing are disabled. RPC connection success does not establish marketplace payment support.

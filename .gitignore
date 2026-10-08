@@ -5,3 +5,5 @@ bin/
 output/
 desktop/build/bin/
 web/wailsjs/
+
+browser/node_modules/

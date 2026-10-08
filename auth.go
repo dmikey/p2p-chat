@@ -48,6 +48,21 @@ type Authority struct {
 }
 
 func NewAuthority(dir string, dev bool) (*Authority, error) {
+	var sender EmailSender = EmailSenderFunc(SendGridOTP)
+	if !dev {
+		var err error
+		sender, err = ConfiguredEmailSender()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return NewAuthorityWithSender(dir, dev, sender)
+}
+
+func NewAuthorityWithSender(dir string, dev bool, sender EmailSender) (*Authority, error) {
+	if sender == nil {
+		return nil, errors.New("email sender required")
+	}
 	p := filepath.Join(dir, "email-authority.key")
 	key, err := os.ReadFile(p)
 	if os.IsNotExist(err) {
@@ -65,7 +80,7 @@ func NewAuthority(dir string, dev bool) (*Authority, error) {
 		return nil, errors.New("invalid authority key")
 	}
 	a := &Authority{key: key, pending: map[string]challenge{}, limits: map[string]bucket{}, Dev: dev}
-	a.Send = SendGridOTP
+	a.Send = sender.SendCode
 	return a, nil
 }
 func normalizeEmail(e string) (string, error) {

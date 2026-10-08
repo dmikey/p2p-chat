@@ -17,6 +17,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	lc "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -49,6 +50,9 @@ type ChatMessage struct {
 	Kind    string `json:"kind"`
 }
 type Node struct {
+	contributorMu    sync.Mutex
+	contributed      *Node
+	runner           Runner
 	Host             host.Host
 	Auth             *AuthClient
 	cfg              Config
@@ -148,7 +152,7 @@ func NewNode(ctx context.Context, cfg Config) (*Node, error) {
 	}
 	v.Bootstrap, v.AuthURL, v.Authority = cfg.Bootstrap, cfg.AuthURL, auth.Key
 	n := &Node{Host: h, Auth: auth, cfg: cfg, vault: v, key: key, seen: map[string]bool{}, ctx: ctx, cancel: cancel, bootstrap: boot}
-	ps, err := pubsub.NewGossipSub(network.WithAllowLimitedConn(ctx, "radchat"), h, pubsub.WithMaxMessageSize(64*1024), pubsub.WithMessageSignaturePolicy(pubsub.StrictNoSign))
+	ps, err := pubsub.NewGossipSub(network.WithAllowLimitedConn(ctx, "radchat"), h, pubsub.WithMaxMessageSize(64*1024), pubsub.WithMessageSignaturePolicy(pubsub.StrictNoSign), pubsub.WithMessageIdFn(func(message *pb.Message) string { h := sha256.Sum256(message.Data); return string(h[:]) }))
 	if err != nil {
 		n.Close()
 		return nil, err
@@ -171,6 +175,12 @@ func NewNode(ctx context.Context, cfg Config) (*Node, error) {
 	return n, nil
 }
 func (n *Node) Close() error {
+	n.runner.stop("stopped")
+	n.contributorMu.Lock()
+	if n.contributed != nil {
+		n.contributed.Close()
+	}
+	n.contributorMu.Unlock()
 	n.cancel()
 	n.stopTopic()
 	return n.Host.Close()
@@ -232,6 +242,9 @@ func (n *Node) verifiedLocked() bool {
 	return n.proof.verify(n.Auth.Key, &p) == nil && p.Peer == n.Host.ID().String() && p.EmailHash == emailHash(n.vault.Email) && p.Expires >= time.Now().Unix()
 }
 func (n *Node) CreateOrg(name string) error {
+	if n.bootstrap == nil && !n.Auth.Dev {
+		return errors.New("connect to your configured relay before creating an organization")
+	}
 	n.setup.Lock()
 	defer n.setup.Unlock()
 	name = strings.TrimSpace(name)

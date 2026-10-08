@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"embed"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net"
 	"net/http"
@@ -20,7 +21,7 @@ func (n *Node) State() map[string]any {
 	name, email, kind := n.vault.Name, n.vault.Email, n.vault.Kind
 	lastErr := n.lastNetworkError
 	org := n.vault.Org
-	out := map[string]any{"peer": n.Host.ID().String(), "name": name, "email": email, "kind": kind, "networkError": lastErr, "org": nil}
+	out := map[string]any{"peer": n.Host.ID().String(), "name": name, "email": email, "kind": kind, "networkError": lastErr, "runtime": "native", "org": nil}
 	if org != nil {
 		var policy Policy
 		json.Unmarshal(org.Policy.Payload, &policy)
@@ -50,6 +51,7 @@ func (n *Node) State() map[string]any {
 		}
 		peers = append(peers, map[string]any{"id": p.String(), "relayed": relayed, "bootstrap": n.bootstrap != nil && p == n.bootstrap.ID})
 	}
+	out["runner"] = n.runnerNode().runner.Snapshot()
 	out["peers"] = peers
 	return out
 }
@@ -66,6 +68,38 @@ func (n *Node) Handler() http.Handler {
 		files.ServeHTTP(w, r)
 	})
 	api := http.NewServeMux()
+	api.Handle("/api/economy", SolanaHandler())
+	api.HandleFunc("/api/runner", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			respond(w, 405, map[string]string{"error": "POST required"})
+			return
+		}
+		var p struct {
+			Action string       `json:"action"`
+			Config RunnerConfig `json:"config"`
+			Name   string       `json:"name"`
+		}
+		if bodyJSON(w, r, &p) != nil {
+			respond(w, 400, map[string]string{"error": "invalid runner request"})
+			return
+		}
+		var err error
+		switch p.Action {
+		case "start":
+			err = n.LaunchContributor(r.Context(), p.Name, p.Config)
+		case "stop":
+			n.runnerNode().runner.stop("paused")
+		case "approve":
+			err = n.runnerNode().ApproveRunner(r.Context())
+		default:
+			err = fmt.Errorf("unsupported runner action")
+		}
+		if err != nil {
+			respond(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		respond(w, 200, n.runnerNode().runner.Snapshot())
+	})
 	api.HandleFunc("/api/state", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.WriteHeader(405)

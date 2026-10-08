@@ -21,6 +21,11 @@ jobs:
         with:
           node-version: '24'
       - run: node --check web/app.js
+      - run: node --check web/theme.js
+      - run: npm ci --prefix browser
+      - run: npm test --prefix browser
+      - run: npm run build --prefix browser
+      - run: git diff --exit-code public/browser.js
       - run: test -z "$(gofmt -l . | grep -v wailsjs)"
   binaries:
     needs: test
@@ -130,6 +135,7 @@ jobs:
         with:
           path: output
           merge-multiple: true
+          pattern: "!*.dockerbuild"
       - run: cp scripts/quick-install.sh output/quick-install.sh && cd output && sha256sum *.tar.gz *.zip quick-install.sh > SHA256SUMS
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

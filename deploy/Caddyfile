@@ -1,5 +1,7 @@
 {$RADCHAT_DOMAIN} {
   encode zstd gzip
+  @p2p header Upgrade websocket
+  reverse_proxy @p2p relay:4002
   reverse_proxy relay:8788
   header {
     X-Content-Type-Options nosniff
