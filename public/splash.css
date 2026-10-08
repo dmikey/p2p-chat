@@ -8,6 +8,7 @@
 
 /* Keep reading colors separate from decorative accents in both themes. */
 :root{--reading-muted:#c7bdce;--reading-accent:#d5ff4a;--reading-line:#55485f}
+body{overflow-x:clip}
 :root[data-theme="day"]{--reading-muted:#50584a;--reading-accent:#49612b;--reading-line:#b9c1aa}
 .brand small,.edition,.hero-footnote,.art-caption,.section-top,.feature-number,
 .feature-tag,.download-notes,.download-card small,.terminal>div,.terminal p,
