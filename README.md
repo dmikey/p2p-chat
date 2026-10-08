@@ -99,7 +99,7 @@ Download the desktop package for your OS from [Releases](https://github.com/dmik
 Standalone node/relay install:
 
 ```sh
-curl -fL https://github.com/dmikey/p2p-chat/releases/download/v0.2.1/quick-install.sh -o quick-install.sh
+curl -fL https://github.com/dmikey/p2p-chat/releases/download/v0.2.2/quick-install.sh -o quick-install.sh
 # Inspect the installer, then:
 sh quick-install.sh
 ~/.local/bin/radchat node

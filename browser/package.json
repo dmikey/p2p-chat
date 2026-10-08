@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "esbuild client.js --bundle --minify --format=iife --target=es2022 --outfile=../public/browser.js",
-    "test": "node --test crypto.test.js"
+    "test": "node --test *.test.js"
   },
   "keywords": [],
   "author": "",

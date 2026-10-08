@@ -8,6 +8,7 @@ import { yamux } from '@chainsafe/libp2p-yamux';
 import { multiaddr } from '@multiformats/multiaddr';
 import { argon2id } from 'hash-wasm';
 import * as C from './crypto.js';
+import {openRPCStream} from './transport.js';
 import { ed25519 } from '@noble/curves/ed25519.js';
 
 const protocols={access:'/radchat/access/1.0.0',join:'/radchat/join/1.0.0',history:'/radchat/history/1.0.0',direct:'/radchat/direct/1.0.0',discovery:'/radchat/discovery/1.0.0'};
@@ -50,7 +51,7 @@ export class BrowserNode {
  active(id=this.peer){return Boolean(this.v.org?.access?.payload.active[id] && this.v.org.access.payload.active[this.peer] && Date.now()-this.fresh<30000)}
  requireActive(){if(!this.active())fail('Deactivated Account or waiting for fresh relay authorization')}
  async rpc(target,protocol,payload){
-  const stream=await this.node.dialProtocol(typeof target==='string'?multiaddr(target):target,protocol,timeout());
+  const stream=await openRPCStream(this.node,target,protocol,timeout());
   stream.inactivityTimeout=10000;
   try{await write(stream,payload);const result=await read(stream);if(result.error)fail(result.error);return result}finally{await stream.close().catch(()=>{})}
  }
@@ -117,7 +118,7 @@ export class BrowserNode {
   const addrs=this.node.getMultiaddrs().map(a=>a.toString());addrs.push(this.bootstrap+'/p2p-circuit/p2p/'+this.peer);
   const found=await this.rpc(this.bootstrap,protocols.discovery,{tag:this.topic,addresses:[...new Set(addrs)].slice(0,12)});
   const roster=new Set(this.v.org.members.map(s=>s.payload.peer));
-  for(const raw of found){const id=raw.split('/p2p/').pop();if(id===this.peer||!roster.has(id)||!this.active(id)||!raw.includes('/ws'))continue;try{await this.node.dial(multiaddr(raw),{signal:AbortSignal.timeout(3000)})}catch{}}
+  for(const raw of found){const id=raw.split('/p2p/').pop();if(id===this.peer||!roster.has(id)||!this.active(id)||!raw.includes('/ws')||this.node.getConnections().some(c=>c.status==='open'&&c.remotePeer.toString()===id))continue;try{await this.node.dial(multiaddr(raw),{signal:AbortSignal.timeout(3000)})}catch{}}
   for(const connection of this.node.getConnections()){
    const id=connection.remotePeer.toString();if(id===this.bootPeer||!this.active(id)||!roster.has(id))continue;
    try{let offset=0;for(let page=0;page<100;page++){const r=await this.rpc(connection.remotePeer,protocols.history,{member:this.v.org.member,offset});if(r.packets.length>32)fail('Invalid history page');C.checkPolicy(this.v.org,r.policy);for(const p of r.packets)await this.accept(C.unb64(p),true);if(!r.more||r.next<=offset)break;offset=r.next}
@@ -185,7 +186,7 @@ export class BrowserNode {
    if(p.channel.startsWith('dm:')){
     const target=p.channel.slice(3),to=o.members.find(m=>m.payload.peer===target);if(!to||target===this.peer||!this.active(target))fail('Recipient unavailable');
     const unsigned={message,to:target},data=await C.seal(C.pairKey(this.id.raw,C.unb64(to.payload.encryptionKey),o.id,this.peer,target),C.bytes(C.json({...unsigned,signature:C.b64(ed25519.sign(C.bytes(C.json(unsigned)),C.unb64(this.v.seed)))})),'radchat-dm:'+o.id);
-    const packet={from:o.member,to,data:C.b64(data)};await this.acceptDirect(packet,true);let propagated=false;try{const c=this.node.getConnections().find(c=>c.remotePeer.toString()===target);if(c)propagated=Boolean((await this.rpc(c.remotePeer,protocols.direct,packet)).ok)}catch{}return {propagated};
+    const packet={from:o.member,to,data:C.b64(data)};await this.acceptDirect(packet,true);let propagated=false;try{const c=this.node.getConnections().find(c=>c.remotePeer.toString()===target);if(c)propagated=Boolean((await this.rpc(c.remotePeer,protocols.direct,packet)).ok)}catch(e){console.warn('DM delivery deferred:',e.message)}return {propagated};
    }
    if(!o.policy.payload.channels.some(c=>c.name===p.channel))fail('Channel does not exist');
    const packet=await C.seal(C.unb64(o.secret),C.bytes(C.json({message,signature:C.b64(ed25519.sign(C.bytes(C.json(message)),C.unb64(this.v.seed)))})),o.id);

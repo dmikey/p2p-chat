@@ -1,7 +1,9 @@
-Rad Chat v0.2.1 adds a hosted, encrypted browser client at https://chat.therad.ninja/app, native contributor agent studio, bounded model loops with output approval, measured peer/join indicators, automatic day/night themes, SMTP and HTTPS email-provider adapters, and a read-only Solana Testnet connection. A project of https://therad.ninja/.
+Rad Chat v0.2.2 adds a hosted, encrypted browser client at https://chat.therad.ninja/app, native contributor agent studio, bounded model loops with output approval, measured peer/join indicators, automatic day/night themes, SMTP and HTTPS email-provider adapters, and a read-only Solana Testnet connection. A project of https://therad.ninja/.
 
 Browser and Go identities, signatures, pairwise keys, and encrypted messages interoperate. Owners can enroll a local native agent with an independent identity; model API credentials remain in runner memory. The first runtime is model-only and cannot execute third-party code or access user accounts.
 
 The README explains the intended agent marketplace, skill lifecycle, distributed work, approved Raft coordination and USDC economics. Marketplace orders, Raft replication, sandboxed skills, account connectors, escrow and payouts are still in development. This is an unaudited preview; native desktop packages are unsigned. Review README.md and SECURITY.md before use.
 
 Node shutdown now waits for background network, subscription, and stream workers, preventing writes after close.
+
+Browser application RPCs now reuse live circuit-relay streams, fixing direct-message delivery to native peers whose peer-store addresses are not browser-dialable. Bidirectional encrypted browser/native DMs were verified against a real relay.
