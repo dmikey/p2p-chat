@@ -8,6 +8,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"net/http"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -103,17 +105,27 @@ func (n *Node) ServiceCall(ctx context.Context, p ServiceClientRequest) (Signed,
 	}{"text", p.Prompt})
 	id, _ := peer.Decode(card.Peer)
 	var stream network.Stream
+	if len(n.Host.Network().ConnsToPeer(id)) > 0 {
+		stream, _ = n.Host.NewStream(network.WithAllowLimitedConn(ctx, "service"), id, ServiceProtocol)
+	}
+	// Contributor containers commonly advertise private interfaces before their
+	// relay route. Try the circuit first and bound each alternative dial.
+	sort.SliceStable(card.Addresses, func(i, j int) bool {
+		return strings.Contains(card.Addresses[i], "/p2p-circuit") && !strings.Contains(card.Addresses[j], "/p2p-circuit")
+	})
 	for _, addr := range card.Addresses {
+		if stream != nil {
+			break
+		}
 		info, err := addrInfo(addr)
 		if err != nil || info.ID != id {
 			continue
 		}
-		if n.Host.Connect(ctx, *info) == nil {
+		dialCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		if n.Host.Connect(dialCtx, *info) == nil {
 			stream, e = n.Host.NewStream(network.WithAllowLimitedConn(ctx, "service"), id, ServiceProtocol)
-			if e == nil {
-				break
-			}
 		}
+		cancel()
 	}
 	if stream == nil {
 		return Signed{}, errors.New("agent could not be reached")

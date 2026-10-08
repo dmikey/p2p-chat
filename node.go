@@ -50,40 +50,41 @@ type ChatMessage struct {
 	Kind    string `json:"kind"`
 }
 type Node struct {
-	lifecycle        sync.Mutex
-	closed           bool
-	workers          sync.WaitGroup
-	closeOnce        sync.Once
-	closeErr         error
-	contributorMu    sync.Mutex
-	contributed      *Node
-	runner           Runner
-	Host             host.Host
-	Auth             *AuthClient
-	cfg              Config
-	mu               sync.Mutex
-	vault            *Vault
-	key              []byte
-	proof            Signed
-	messages         []ChatMessage
-	packets          [][]byte
-	seen             map[string]bool
-	ps               *pubsub.PubSub
-	topic            *pubsub.Topic
-	sub              *pubsub.Subscription
-	ctx              context.Context
-	cancel           context.CancelFunc
-	bootstrap        *peer.AddrInfo
-	lastNetworkError string
-	reservationUntil time.Time
-	directPackets    []DirectPacket
-	directMessages   []ChatMessage
-	setup            sync.Mutex
-	mesh             sync.Mutex
-	accessFresh      time.Time
-	accessUpdate     sync.Mutex
-	history          sync.Mutex
-	admin            sync.Mutex
+	lifecycle          sync.Mutex
+	closed             bool
+	workers            sync.WaitGroup
+	closeOnce          sync.Once
+	closeErr           error
+	contributorMu      sync.Mutex
+	contributed        *Node
+	runner             Runner
+	Host               host.Host
+	Auth               *AuthClient
+	cfg                Config
+	mu                 sync.Mutex
+	vault              *Vault
+	key                []byte
+	proof              Signed
+	messages           []ChatMessage
+	packets            [][]byte
+	seen               map[string]bool
+	ps                 *pubsub.PubSub
+	topic              *pubsub.Topic
+	sub                *pubsub.Subscription
+	ctx                context.Context
+	cancel             context.CancelFunc
+	bootstrap          *peer.AddrInfo
+	lastNetworkError   string
+	reservationUntil   time.Time
+	reservationChecked time.Time
+	directPackets      []DirectPacket
+	directMessages     []ChatMessage
+	setup              sync.Mutex
+	mesh               sync.Mutex
+	accessFresh        time.Time
+	accessUpdate       sync.Mutex
+	history            sync.Mutex
+	admin              sync.Mutex
 }
 
 func identityKey(v *Vault) (lc.PrivKey, error) { return lc.UnmarshalPrivateKey(v.Identity) }
@@ -157,6 +158,14 @@ func NewNode(ctx context.Context, cfg Config) (*Node, error) {
 	}
 	v.Bootstrap, v.AuthURL, v.Authority = cfg.Bootstrap, cfg.AuthURL, auth.Key
 	n := &Node{Host: h, Auth: auth, cfg: cfg, vault: v, key: key, seen: map[string]bool{}, ctx: ctx, cancel: cancel, bootstrap: boot}
+	h.Network().Notify(&network.NotifyBundle{DisconnectedF: func(_ network.Network, c network.Conn) {
+		if boot != nil && c.RemotePeer() == boot.ID {
+			n.mu.Lock()
+			n.reservationUntil = time.Time{}
+			n.reservationChecked = time.Time{}
+			n.mu.Unlock()
+		}
+	}})
 	ps, err := pubsub.NewGossipSub(network.WithAllowLimitedConn(ctx, "radchat"), h, pubsub.WithMaxMessageSize(64*1024), pubsub.WithMessageSignaturePolicy(pubsub.StrictNoSign), pubsub.WithMessageIdFn(func(message *pb.Message) string { h := sha256.Sum256(message.Data); return string(h[:]) }))
 	if err != nil {
 		n.Close()
@@ -811,6 +820,8 @@ func (n *Node) networkLoop() {
 	}
 }
 func (n *Node) networkStep() {
+	n.mesh.Lock()
+	defer n.mesh.Unlock()
 	ctx, cancel := context.WithTimeout(n.ctx, 20*time.Second)
 	defer cancel()
 	o := n.snapshotOrg()
@@ -825,12 +836,13 @@ func (n *Node) networkStep() {
 			o = n.snapshotOrg()
 		}
 		n.mu.Lock()
-		needReservation := time.Now().Add(time.Minute).After(n.reservationUntil)
+		needReservation := time.Now().Add(time.Minute).After(n.reservationUntil) || time.Since(n.reservationChecked) > 30*time.Second
 		n.mu.Unlock()
 		if err == nil && needReservation {
 			if reservation, e := relayclient.Reserve(ctx, n.Host, *n.bootstrap); e == nil {
 				n.mu.Lock()
 				n.reservationUntil = reservation.Expiration
+				n.reservationChecked = time.Now()
 				n.mu.Unlock()
 			}
 		}
