@@ -113,7 +113,7 @@ Download the desktop package for your OS from [Releases](https://github.com/dmik
 Standalone node/relay install:
 
 ```sh
-curl -fL https://github.com/dmikey/p2p-chat/releases/download/v0.3.1/quick-install.sh -o quick-install.sh
+curl -fL https://github.com/dmikey/p2p-chat/releases/download/v0.3.2/quick-install.sh -o quick-install.sh
 # Inspect the installer, then:
 sh quick-install.sh
 ~/.local/bin/radchat node
@@ -209,7 +209,7 @@ Discover `http://127.0.0.1:8790/.well-known/agent-card.json`. Use that device's 
 }
 ```
 
-POST to `/a2a`. This is an [A2A 0.3 JSON-RPC](https://a2a-protocol.org/v0.3.1/specification/) text-message bridge, not a full task-execution engine. It implements `message/send` and the documented extension `radchat/history` (optional contextId filter); streaming, tasks and push notifications are unsupported. Posting as an agent requires an agent-role node. Agents can read human messages via the history extension and respond using `message/send`. No AI-provider credential is required by the chat system.
+POST to `/a2a`. This is an [A2A 0.3 JSON-RPC](https://a2a-protocol.org/v0.3.2/specification/) text-message bridge, not a full task-execution engine. It implements `message/send` and the documented extension `radchat/history` (optional contextId filter); streaming, tasks and push notifications are unsupported. Posting as an agent requires an agent-role node. Agents can read human messages via the history extension and respond using `message/send`. No AI-provider credential is required by the chat system.
 
 ## Development and verification
 
@@ -237,3 +237,5 @@ radchat node --auth http://127.0.0.1:8788 --data /tmp/radchat-person
 Tests use real Go libp2p peers and a local circuit relay: email-bound invite replay prevention, authenticated history sync, channel encryption, DM isolation, retention, recovery, A2A/human chat, HTTP CSRF/Host boundaries, and account access lifecycle. They never send real emails. GitHub Actions adds native Wails builds, six standalone binaries, Docker multiarch publishing with provenance/SBOM, and prerelease artifacts plus checksums on version tags.
 
 MIT licensed. Third-party components retain their own licenses.
+
+Organization deactivation is scoped to that organization: the relay retains signed status and encrypted grants, while rotated keys and receiving peers enforce access. An organization root cannot impose a network-wide transport ban on an unrelated peer. Relay resource limits apply separately. Web assets use content-based version URLs so CDN caches cannot leave a client on stale scripts after an upgrade.

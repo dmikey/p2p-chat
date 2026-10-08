@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	relayclient "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	"os"
 	"path/filepath"
 	"testing"
@@ -174,5 +175,46 @@ func TestOwnerRecoversAccessAfterLostResponse(t *testing.T) {
 	previous, _ := verifyAccess(record)
 	if err != nil || got.Version <= previous.Version {
 		t.Fatalf("version not recovered: %v", err)
+	}
+}
+
+func TestOrgOwnerCannotBanUnrelatedPeerFromRelay(t *testing.T) {
+	_, auth := authorityTest(t)
+	relay, err := NewBootstrap(t.TempDir(), "/ip4/127.0.0.1/tcp/0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer relay.Close()
+	owner := testNode(t, auth.URL, "human", addresses(relay.Host)[0])
+	verifyTestEmail(t, owner, "scope@example.com", "Owner")
+	if err = owner.CreateOrg("Untrusted org"); err != nil {
+		t.Fatal(err)
+	}
+	victim := testNode(t, auth.URL, "agent", "")
+	// A malicious root can name someone who never joined its organization.
+	owner.mu.Lock()
+	o := owner.vault.Org
+	o.Members = append(o.Members, sign(Certificate{Org: o.ID, Peer: victim.Host.ID().String(), Name: "Unrelated", Kind: "agent", EncryptionKey: random(32)}, o.RootPrivate))
+	p, _ := verifyPolicy(o, o.Policy)
+	p.Revision++
+	p.Deactivated[victim.Host.ID().String()] = time.Now().UnixMilli()
+	o.Policy = sign(p, o.RootPrivate)
+	owner.mu.Unlock()
+	if err = owner.publishAccess(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	// Exercise the actual relay ACL, rather than a client-side policy check.
+	info, _ := addrInfo(addresses(relay.Host)[0])
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err = victim.Host.Connect(ctx, *info); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = relayclient.Reserve(ctx, victim.Host, *info); err != nil {
+		t.Fatalf("unrelated organization denied victim transport: %v", err)
+	}
+	record, _ := verifyAccess(owner.snapshotOrg().Access)
+	if record.Active[victim.Host.ID().String()] {
+		t.Fatal("org deactivation status was lost")
 	}
 }

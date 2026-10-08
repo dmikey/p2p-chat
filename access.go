@@ -174,22 +174,15 @@ func (r *AccessRegistry) handle(s network.Stream) {
 	}
 	writeJSON(s, accessResponse{Record: record})
 }
-func (r *AccessRegistry) allowed(id peer.ID) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	known, active := false, false
-	for _, s := range r.records {
-		record, _ := verifyAccess(s)
-		if state, ok := record.Active[id.String()]; ok {
-			known = true
-			active = active || state
-		}
-	}
-	return !known || active
-}
-func (r *AccessRegistry) AllowReserve(id peer.ID, a ma.Multiaddr) bool { return r.allowed(id) }
+
+// Organization roots authorize their own content, not network-wide bans. An
+// owner can certify any peer ID in their org; treating its inactive bit as a
+// global relay ACL would let them deny service to an unrelated participant.
+// Key rotation, encrypted grants and receiving peers enforce org revocation.
+// Relay resource limits apply independently of organization membership.
+func (r *AccessRegistry) AllowReserve(id peer.ID, a ma.Multiaddr) bool { return true }
 func (r *AccessRegistry) AllowConnect(src peer.ID, a ma.Multiaddr, dest peer.ID) bool {
-	return r.allowed(src) && r.allowed(dest)
+	return true
 }
 func (n *Node) accessExchange(ctx context.Context, update *Signed) (Signed, error) {
 	o := n.snapshotOrg()
